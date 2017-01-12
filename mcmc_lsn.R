@@ -12,7 +12,7 @@ log_q <- function(y,b,p,mu,sigma2,Sigmab){
     ll2 <- log(1-p)
   }
   else{
-    ll2 <- log(p) + dlnorm(y,mu,sqrt(sigma2),log=TRUE)
+    ll2 <- log(p) + dlnorm(y,mu,sigma2,log=TRUE)
   }
   return(ll1+ll2)
 }
@@ -79,8 +79,8 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
     currentmu <- exp(Xb%*%currentbeta+currentb[,2])
     
     #sample sigma2
-   currentsigma2 <- rinvgamma(1,n/2+a0,(b0+0.5*sum((log(yp)-Xbp%*%currentbeta-currentb[ind,2])^2)))
-
+    currentsigma2 <- rinvgamma(1,n/2+a0,(b0+0.5*sum((log(yp)-Xbp%*%currentbeta-currentb[ind,2])^2)))
+    
     
     #sample covaraicne matrix for re
     currentSigmab <- riwish(nu0+n,D0+t(currentb)%*%currentb)
@@ -113,23 +113,23 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
     }
   }
   params <- data.frame(cbind(alpha,beta,sigma2,sigma2b1,sigma2b2,corrb))
-  names(params) <- c(paste0("alpha_",0:(ncol(Xa)-1)),
-                paste0("beta_",0:(ncol(Xb)-1)),
-                "sigma2","sigma2b1","sigma2b2","corrb")
+  names(params) <- c(paste0("alpha_",0:ncol((Xa)-1)),
+                     paste0("beta_",0:ncol((Xa)-1)),
+                     "sigma2","sigma2b1","sigma2b2","corrb")
   
   out <- list(params=params,b1=b1,b2=b2)
   return(out)
 } 
 
-#pams <- pams[1:500,]
+pams <- pams[1:500,]
 data <- list(Xa=with(pams,model.matrix(~Age+BMI+Gender+Smoker)),
              Xb=with(pams,model.matrix(~Age+BMI+Gender+Smoker)),
-                      y=pams$ModPAR)
+             y=pams$ModPAR)
 init <- list(currentbeta=rep(0,ncol(data$Xb)),
-                currentalpha=rep(0,ncol(data$Xa)),
-                currentsigma2=1,
-                currentSigmab=diag(2),
-                currentb=matrix(0,ncol=2,nrow=nrow(pams)))
+             currentalpha=rep(0,ncol(data$Xa)),
+             currentsigma2=1,
+             currentSigmab=diag(2),
+             currentb=matrix(0,ncol=2,nrow=nrow(pams)))
 prior <- list(mu0a=rep(0,ncol(data$Xa)),
               mu0b=rep(0,ncol(data$Xb)),
               V0a=10*diag(ncol(data$Xa)),
@@ -138,5 +138,5 @@ prior <- list(mu0a=rep(0,ncol(data$Xa)),
               b0=1,
               nu0=3,
               D0=diag(2))
-                      
+
 out <- mcmc_ln(data,init,prior,10000)
