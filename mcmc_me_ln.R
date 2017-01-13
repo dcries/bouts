@@ -52,7 +52,7 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
   y <- data$y
   w <- data$w
   n <- nrow(Za)
-
+  
   nr <- ncol(y)
   ybar <- rowMeans(y)
   scl <- 2#quantile(rowMeans(w),probs=0.75)
@@ -114,6 +114,10 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
       rn <- rnorm(1,Za[j,]%*%currentalpha+currentb[j,1],1)
       currentu[j] <- ifelse(currentx[j]==0,-abs(rn),abs(rn))
     }
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #rn <- rnorm(1,Za%*%currentalpha+currentb[j,],1)
+    #currentu <- ifelse(currentx==0,-abs(rn),abs(rn))
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
     #sample alphas
     Va <- solve(solve(V0a)+t(Za)%*%Za)
@@ -155,8 +159,13 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
       wsum <- wsum + sum((w[,j]-currentx)^2)
       ysum <- ysum + sum((y[,j]-currentgamma*currentx)^2)
     }
-    currentsigma2w <- rinvgamma(1,n/2+a0w,b0w+0.5*wsum)
-    currentsigma2y <- rinvgamma(1,n/2+a0y,b0y+0.5*ysum)
+    
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #wsum <- sum((w-currentx)^2)
+    #ysum <- sum((y-currentgamma*currentx)^2)
+    
+    currentsigma2w <- rinvgamma(1,nr*n/2+a0w,b0w+0.5*wsum)
+    currentsigma2y <- rinvgamma(1,nr*n/2+a0y,b0y+0.5*ysum)
     
     #sample gamma
     Vg <- solve(t(currentx)%*%currentx/currentsigma2y + 1/V0g)
@@ -167,7 +176,7 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
       r <- runif(1)
       propx <- ifelse(r<(1-p0),0,rexp(1,.0095))#abs(rt(1,ncp=10,df=20)))
       lacceptprobx <- log_qx(propx,w[j,],y[j,],currentp[j],log(currentmu[j]),currentgamma,currentsigma2,currentsigma2w,currentsigma2y) + log_gx(currentx[j],p0,scl) -
-                      log_qx(currentx[j],w[j,],y[j,],currentp[j],log(currentmu[j]),currentgamma,currentsigma2,currentsigma2w,currentsigma2y) - log_gx(propx,p0,scl)
+        log_qx(currentx[j],w[j,],y[j,],currentp[j],log(currentmu[j]),currentgamma,currentsigma2,currentsigma2w,currentsigma2y) - log_gx(propx,p0,scl)
       
       if(lacceptprobx > log(runif(1))){
         currentx[j] <- propx
