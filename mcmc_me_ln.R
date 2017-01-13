@@ -24,7 +24,7 @@ log_qx <- function(x,w,y,p,mu,gamma,sigma2,sigma2w,sigma2y){
   else{
     ll1 <- log(p) + dlnorm(x,mu,sqrt(sigma2),log=TRUE)
   } 
-  ll3 <- dnorm(w,x,sqrt(sigma2w),log=TRUE) + dnorm(y,x*gamma,sqrt(sigma2y),log=TRUE)
+  ll3 <- sum(dnorm(w,x,sqrt(sigma2w),log=TRUE) + dnorm(y,x*gamma,sqrt(sigma2y),log=TRUE))
   
   return(ll1+ll3)
 }  
@@ -34,7 +34,7 @@ log_gx <- function(x,p0,scl){
     ll <- log(1-p0)
   }
   else{
-    ll <- log(p0) + 2*dcauchy(x,scale=scl,log=TRUE)
+    ll <- log(p0) + dexp(x,0.0095,log=TRUE)#2*dt(x,ncp=10000,df=20,log=TRUE)
   }
   return(ll)
 }
@@ -44,22 +44,18 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
   #!!!!!!!!!!!!!!!!!!!!!
   #!!!!!!!!!!!!!!!!!!!!!
   #non adaptive right now
-  p0 <- 0.15
+  p0 <- 0.85
   
   #data
-  Xa    <- data$Xa
-  Xb <- data$Xb
+  Za    <- data$Za
+  Zb <- data$Zb
   y <- data$y
   w <- data$w
-  n <- nrow(Xa)
-  z <- rep(1,n)
-  z[y==0] <- 0
-  ind <- y>0
-  yp <- y[ind]
-  Xbp <- Xb[ind,]
+  n <- nrow(Za)
+
   nr <- ncol(y)
   ybar <- rowMeans(y)
-  scl <- quantile(rowMeans(w),probs=0.75)
+  scl <- 2#quantile(rowMeans(w),probs=0.75)
   
   #initial values
   currentbeta <- init$currentbeta
@@ -90,8 +86,8 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
   D0 <- prior$D0
   
   #allocate storae
-  beta <- matrix(0,ncol=ncol(Xb),nrow=nreps)
-  alpha <- matrix(0,ncol=ncol(Xa),nrow=nreps)
+  beta <- matrix(0,ncol=ncol(Zb),nrow=nreps)
+  alpha <- matrix(0,ncol=ncol(Za),nrow=nreps)
   sigma2 <- rep(0,nreps)
   #u <- matrix(0,)
   sigma2b1 <- rep(0,nreps)
@@ -107,26 +103,32 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
   
   tune <- array(0.01*diag(2),dim=c(2,2,n))
   
+  
   for(i in 1:nreps){
+    
+    ind <- currentx>0
+    currentxp <- currentx[ind]
+    Zbp <- Zb[ind,]
+    
     for(j in 1:n){
-      rn <- rnorm(1,Xa[j,]%*%currentalpha+currentb[j,1],1)
+      rn <- rnorm(1,Za[j,]%*%currentalpha+currentb[j,1],1)
       currentu[j] <- ifelse(currentx[j]==0,-abs(rn),abs(rn))
     }
     
     #sample alphas
-    Va <- solve(solve(V0a)+t(Xa)%*%Xa)
-    mua <- Va%*%(solve(V0a)%*%mu0a + t(Xa)%*%(currentu-currentb[,1]))
+    Va <- solve(solve(V0a)+t(Za)%*%Za)
+    mua <- Va%*%(solve(V0a)%*%mu0a + t(Za)%*%(currentu-currentb[,1]))
     currentalpha <- mvrnorm(1,mua,Va)
-    currentp <- pnorm(Xa%*%currentalpha+currentb[,1])
+    currentp <- pnorm(Za%*%currentalpha+currentb[,1])
     
     #sample betas
-    Vb <- solve(solve(V0b)+t(Xbp)%*%Xbp/currentsigma2)
-    mub <- Vb%*%(solve(V0b)%*%mu0b + t(Xbp)%*%(log(yp)-currentb[ind,2])/currentsigma2)
+    Vb <- solve(solve(V0b)+t(Zbp)%*%Zbp/currentsigma2)
+    mub <- Vb%*%(solve(V0b)%*%mu0b + t(Zbp)%*%(log(currentxp)-currentb[ind,2])/currentsigma2)
     currentbeta <- mvrnorm(1,mub,Vb)
-    currentmu <- exp(Xb%*%currentbeta+currentb[,2])
+    currentmu <- exp(Zb%*%currentbeta+currentb[,2])
     
     #sample sigma2
-    currentsigma2 <- rinvgamma(1,n/2+a0,(b0+0.5*sum((log(yp)-Xbp%*%currentbeta-currentb[ind,2])^2)))
+    currentsigma2 <- rinvgamma(1,n/2+a0,(b0+0.5*sum((log(currentxp)-Zbp%*%currentbeta-currentb[ind,2])^2)))
     
     
     #sample covaraicne matrix for re
@@ -134,8 +136,8 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
     
     for(j in 1:n){
       propb <- mvrnorm(1,currentb[j,],2.88*tune[,,j])
-      lacceptprobu <- log_qu(currentx[j],propb,currentp[j],currentmu[j],currentsigma2,currentSigmab) - 
-        log_qu(currentx[j],currentb[j,],currentp[j],currentmu[j],currentsigma2,currentSigmab)
+      lacceptprobu <- log_qu(currentx[j],propb,currentp[j],log(currentmu[j]),currentsigma2,currentSigmab) - 
+        log_qu(currentx[j],currentb[j,],currentp[j],log(currentmu[j]),currentsigma2,currentSigmab)
       
       if(lacceptprobu > log(runif(1))){
         currentb[j,] <- propb
@@ -144,7 +146,7 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
         tune[,,j] <- cov(cbind(b1[1:(i-1),j],b2[1:(i-1),j]))
       }
       
-    }
+    } 
     
     #sample sigma2y sigma2w
     wsum <- 0
@@ -163,9 +165,9 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
     
     for(j in 1:n){
       r <- runif(1)
-      propx <- ifelse(r<(1-currentp[j]),0,abs(rcauchy(1,scale=scl)))
-      lacceptprobx <- log_qx(propx,w[j,],y[j,],currentp[j],currentmu[j],currentgamma,currentsigma2,currentsigma2w,currentsigma2y) + log_gx(currentx[j],p0,scl) -
-                      log_qx(currentx[j],w[j,],y[j,],currentp[j],currentmu[j],currentgamma,currentsigma2,currentsigma2w,currentsigma2y,scl,p0) - log_gx(propx,p0,scl)
+      propx <- ifelse(r<(1-p0),0,rexp(1,.0095))#abs(rt(1,ncp=10,df=20)))
+      lacceptprobx <- log_qx(propx,w[j,],y[j,],currentp[j],log(currentmu[j]),currentgamma,currentsigma2,currentsigma2w,currentsigma2y) + log_gx(currentx[j],p0,scl) -
+                      log_qx(currentx[j],w[j,],y[j,],currentp[j],log(currentmu[j]),currentgamma,currentsigma2,currentsigma2w,currentsigma2y) - log_gx(propx,p0,scl)
       
       if(lacceptprobx > log(runif(1))){
         currentx[j] <- propx
@@ -192,31 +194,47 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
       print(i)
     }
   }
-  params <- data.frame(cbind(alpha,beta,sigma2,sigma2b1,sigma2b2,corrb))
-  names(params) <- c(paste0("alpha_",0:(ncol(Xa)-1)),
-                     paste0("beta_",0:(ncol(Xb)-1)),
-                     "sigma2","sigma2b1","sigma2b2","corrb")
+  params <- data.frame(cbind(alpha,beta,gamma,sigma2,sigma2w,sigma2y,
+                             sigma2b1,sigma2b2,corrb))
+  names(params) <- c(paste0("alpha_",0:(ncol(Za)-1)),
+                     paste0("beta_",0:(ncol(Zb)-1)),
+                     "gamma","sigma2","sigma2w","sigma2y",
+                     "sigma2b1","sigma2b2","corrb")
   
-  out <- list(params=params,b1=b1,b2=b2)
+  out <- list(params=params,b1=b1,b2=b2,latentx=latentx)
   return(out)
 } 
 
 #pams <- pams[1:500,]
-data <- list(Xa=with(pams,model.matrix(~Age+BMI+Gender+Smoker)),
-             Xb=with(pams,model.matrix(~Age+BMI+Gender+Smoker)),
-             y=pams$ModPAR)
-init <- list(currentbeta=rep(0,ncol(data$Xb)),
-             currentalpha=rep(0,ncol(data$Xa)),
+p1 <- pams[pams$Trial==1,]
+p2 <- pams[pams$Trial==2,]
+
+pc <- merge(p1,p2,by="id")
+pcy <- cbind(pc$ModPAR.x,pc$ModPAR.y)
+pcw <- cbind(pc$Moderatev52.x,pc$Moderatev52.y)
+
+data <- list(Za=with(pc,model.matrix(~Age.y+BMI.y+Gender.y+Smoker.y)),
+             Zb=with(pc,model.matrix(~Age.y+BMI.y+Gender.y+Smoker.y)),
+             y=pcy,w=pcw)
+
+init <- list(currentbeta=rep(0,ncol(data$Zb)),
+             currentalpha=rep(0,ncol(data$Za)),
              currentsigma2=1,
              currentSigmab=diag(2),
-             currentb=matrix(0,ncol=2,nrow=nrow(pams)))
-prior <- list(mu0a=rep(0,ncol(data$Xa)),
-              mu0b=rep(0,ncol(data$Xb)),
-              V0a=10*diag(ncol(data$Xa)),
-              V0b=10*diag(ncol(data$Xb)),
-              a0=1,
-              b0=1,
+             currentb=matrix(0,ncol=2,nrow=nrow(pc)),
+             currentsigma2w=1,
+             currentsigma2y=1,
+             currentgamma=1,
+             currentx=rowMeans(pcw))
+
+prior <- list(mu0a=rep(0,ncol(data$Za)),
+              mu0b=rep(0,ncol(data$Zb)),
+              mu0g=0,
+              V0a=10*diag(ncol(data$Za)),
+              V0b=10*diag(ncol(data$Zb)),
+              V0g=10,
+              a0=1,b0=1,a0w=0,b0w=0,a0y=0,b0y=0,
               nu0=3,
               D0=diag(2))
 
-out <- mcmc_ln(data,init,prior,10000)
+out <- mcmc_ln(data,init,prior,10000,burn=1000)
