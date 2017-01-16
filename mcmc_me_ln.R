@@ -140,7 +140,7 @@ mcmc_ln <- function(data,init,prior,nreps,burn=1000){
     currentmu <- exp(Zb%*%currentbeta+currentb[,2])
     
     #sample sigma2
-    currentsigma2 <- rinvgamma(1,n/2+a0,(b0+0.5*sum((log(currentxp)-Zbp%*%currentbeta-currentb[ind,2])^2)))
+    currentsigma2 <- rinvgamma(1,sum(ind)/2+a0,(b0+0.5*sum((log(currentxp)-Zbp%*%currentbeta-currentb[ind,2])^2)))
     
     
     #sample covaraicne matrix for re
@@ -275,3 +275,10 @@ prior <- list(mu0a=rep(0,ncol(data$Za)),
               D0=diag(2))
 
 out <- mcmc_ln(data,init,prior,10000,burn=1000)
+
+
+#plot >0 probabilities
+prob0 <- pnorm(data$Za%*%colMeans(out$params[,grep("alpha",names(out$params))]))
+plot(prob0)
+which.max(prob0)
+

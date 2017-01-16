@@ -102,7 +102,7 @@ datalist <- list(y=y,
             lambda=diag(2),
             zero=rep(0,2))
 
-x1 <- with(pams,model.matrix(~Gender+Smoker+Education+Income))
+x1 <- with(pams,model.matrix(~Gender))
 x2 <- scale(cbind(pams$Age,pams$BMI),center = T,scale = T)
 x <- cbind(x1,x2)
 datalist <- list(y=pams$ModPAR,
