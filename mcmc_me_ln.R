@@ -274,7 +274,7 @@ prior <- list(mu0a=rep(0,ncol(data$Za)),
               nu0=3,
               D0=diag(2))
 
-out <- mcmc_ln(data,init,prior,10000,burn=1000)
+#out <- mcmc_ln(data,init,prior,10000,burn=1000)
 
 
 #plot >0 probabilities
