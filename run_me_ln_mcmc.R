@@ -1,6 +1,11 @@
 Rcpp::sourceCpp('C:/Users/dcries/github/bouts/mcmc_me_ln.cpp')
+Rcpp::sourceCpp('/home/danny/Documents/github/bouts/mcmc_me_ln.cpp')
+Rcpp::sourceCpp('/home/danny/Documents/github/bouts/ppred_check.cpp')
+
 
 pams <- read.csv("C:\\Users\\dcries\\github\\pams\\FinalPAMSDataSetNew.csv")
+pams <- read.csv("/home/danny/Documents/github/pams/FinalPAMSDataSetNew.csv")
+
 pams <- pams[-which(is.na(pams$ModPAR)|is.na(pams$Age)|is.na(pams$BMI)|is.na(pams$Smoker)),]
 p1 <- pams[pams$Trial==1,]
 p2 <- pams[pams$Trial==2,]
@@ -38,7 +43,16 @@ prior <- list(mu0a=rep(0,ncol(data$Za)),
               nu0=3,
               D0=diag(2))
 
-out <- mcmc_me_ln(data,init,prior,10000,burn=5000,p0=0.85)
+out <- mcmc_me_ln(data,init,prior,10000,burn=2000,p0=0.85)
+
+
+check <- ppred_ln(out,data,1000)
+summary(check$zeros); apply(pcw,2,function(x){sum(x==0)})
+summary(check$maxw); apply(pcw,2,max)
+summary(check$maxy); apply(pcy,2,max)
+summary(check$complyw); apply(pcw,2,function(x){sum(x>450/7)/length(x)})
+summary(check$complyy); apply(pcy,2,function(x){sum(x>450/7)/length(x)})
+
 
 out$accept0/out$prop0;out$accept1/out$prop1
 plot(apply(out$b1,2,function(x){(length(unique(x))-1)/length(x)}))
@@ -67,19 +81,25 @@ residw2 <- mu[pcw[,2]>0] - log(pcw[pcw[,2]>0,2])
 residy1 <- mu[pcy[,1]>0] - log(pcy[pcy[,1]>0,1])
 residy2 <- mu[pcy[,2]>0] - log(pcy[pcy[,2]>0,2])
 
+#residuals for latentx obs >0
+truex <- (colMeans(out$latentx))
+residx <- mu - log(truex)
+
 residw <- c(residw1,residw2)
 residy <- c(residy1,residy2)
 
-predw <- c(mu[pcw[,1]>0],mu[pcw[,2]>0])
-predy <- c(mu[pcy[,1]>0],mu[pcy[,2]>0])
+truew <- c(pcw[pcw[,1]>0,1],pcw[pcw[,2]>0,2])
+truey <- c(mu[pcy[,1]>0],mu[pcy[,2]>0])
 
 
-plot(predw,residw)
-plot(predy,residy)
+plot(log(truew),residw)
+plot(truey,residy)
+plot(truex,residx)
 
 #qq plots
 qqnorm(residw);qqline(residw);shapiro.test(residw)
 qqnorm(residy);qqline(residy);shapiro.test(residy)
+qqnorm(residx);qqline(residx);shapiro.test(residx)
 
 #not sure what these would even tell us
 qqnorm(colMeans(out$b1))
