@@ -47,7 +47,7 @@ double checkcomply(arma::vec x, double comply){
 
 
 // [[Rcpp::export]]
-List ppred_ln(List sample, List data, int nreps) {
+List ppred_ln(List sample, List data, int nreps, int model=1) {
 
   arma::mat latentx         = as<arma::mat>(sample["latentx"]);
   arma::mat beta            = as<arma::mat>(sample["beta"]);
@@ -71,10 +71,15 @@ List ppred_ln(List sample, List data, int nreps) {
 
   //allocate storage
   arma::vec nzeros(nreps);
+  arma::vec medianw(nreps);
+  arma::vec mediany(nreps);
   arma::vec maxw(nreps);
   arma::vec maxy(nreps);
+  arma::vec corwy(nreps);
+  arma::mat temp(1,1);
   arma::vec complyw(nreps);
   arma::vec complyy(nreps);
+  arma::vec ratiosd(nreps);
   
     //for calculations
   arma::vec pi(n);
@@ -103,26 +108,44 @@ List ppred_ln(List sample, List data, int nreps) {
       }
       else{
         simx[j] = R::rlnorm(lmu[j],pow(sigma2[i],0.5));
-        simw[j] = R::rnorm(simx[j],pow(sigma2w[i],0.5)); //exp(R::rlnorm(simx[j],pow(sigma2w[i],0.5))); 
-        simy[j] = R::rnorm(gamma[i]*simx[j],pow(sigma2y[i],0.5)); //exp(R::rlnorm(gamma[i]*simx[j],pow(sigma2y[i],0.5))); 
+        
+        if(model==1){
+          simw[j] = R::rnorm(latentx(i,j),pow(sigma2w[i],0.5)); //exp(R::rlnorm(simx[j],pow(sigma2w[i],0.5))); 
+          simy[j] = R::rnorm(gamma[i]*latentx(i,j),pow(sigma2y[i],0.5)); //exp(R::rlnorm(gamma[i]*simx[j],pow(sigma2y[i],0.5))); 
+        }
+        else if(model==2){
+          simw[j] = exp(R::rnorm(log(latentx(i,j)),pow(sigma2w[i],0.5))); //exp(R::rlnorm(simx[j],pow(sigma2w[i],0.5))); 
+          simy[j] = exp(R::rnorm(gamma[i]*log(latentx(i,j)),pow(sigma2y[i],0.5))); //exp(R::rlnorm(gamma[i]*simx[j],pow(sigma2y[i],0.5)));  
+          
+        }
       }
     }
     
     nzeros[i]   = zerocnt;
+    medianw[i]  = median(simw);
+    mediany[i]  = median(simy);
     maxw[i]     = max(simw);
     maxy[i]     = max(simy);
+    temp        = cor(simw,simy);
+    corwy[i]    = temp(0,0);
     complyw[i]  = checkcomply(simw,450.0/7.0);
     complyy[i]  = checkcomply(simy,450.0/7.0);
+    ratiosd[i]  = stddev(simy)/stddev(simw);
     
     //std::cout << i << "\n";
   }
   
   return List::create(
     Named("zeros")    = nzeros,
+    Named("medianw")  = medianw,
+    Named("mediany")  = mediany,
     Named("maxw")     = maxw,
     Named("maxy")     = maxy,
+    Named("corwy")    = corwy,
     Named("complyw")  = complyw,
     Named("complyy")  = complyy,
-    Named("simw")     = simw);
+    Named("ratiosd")  = ratiosd,
+    Named("simw")     = simw,
+    Named("simy")     = simy);
 }
 

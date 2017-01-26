@@ -1,4 +1,5 @@
 Rcpp::sourceCpp('C:/Users/dcries/github/bouts/mcmc_me_ln.cpp')
+Rcpp::sourceCpp('C:/Users/dcries/github/bouts/ppred_check.cpp')
 Rcpp::sourceCpp('/home/danny/Documents/github/bouts/mcmc_me_ln.cpp')
 Rcpp::sourceCpp('/home/danny/Documents/github/bouts/ppred_check.cpp')
 
@@ -44,12 +45,18 @@ prior <- list(mu0a=rep(0,ncol(data$Za)),
               D0=diag(2))
 
 out <- mcmc_me_ln(data,init,prior,10000,burn=2000,p0=0.85)
+out2 <- mcmc_ln_ln(data,init,prior,2000,burn=1000,p0=0.85)
 
 
 check <- ppred_ln(out,data,1000)
+check2 <- ppred_ln(out2,data,1000,model=2)
+
 summary(check$zeros); apply(pcw,2,function(x){sum(x==0)})
 summary(check$maxw); apply(pcw,2,max)
 summary(check$maxy); apply(pcy,2,max)
+summary(check$medianw); apply(pcw,2,median)
+summary(check$mediany); apply(pcy,2,median)
+summary(check$corwy); cor(pcw[,1],pcy[,1]); cor(pcw[,2],pcy[,2])
 summary(check$complyw); apply(pcw,2,function(x){sum(x>450/7)/length(x)})
 summary(check$complyy); apply(pcy,2,function(x){sum(x>450/7)/length(x)})
 
@@ -89,7 +96,7 @@ residw <- c(residw1,residw2)
 residy <- c(residy1,residy2)
 
 truew <- c(pcw[pcw[,1]>0,1],pcw[pcw[,2]>0,2])
-truey <- c(mu[pcy[,1]>0],mu[pcy[,2]>0])
+truey <- c(pcy[pcy[,1]>0],pcy[pcy[,2]>0])
 
 
 plot(log(truew),residw)
