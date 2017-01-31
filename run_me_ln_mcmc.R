@@ -31,7 +31,7 @@ init <- list(currentbeta=rep(0,ncol(data$Zb)),
              currentsigma2w=1,
              currentsigma2y=1,
              currentgamma=1,
-             currentx=rowMeans(pcw),
+             currentx=rowMeans(pcw)+1,
              tune=rep(0.001,2))
 
 prior <- list(mu0a=rep(0,ncol(data$Za)),
@@ -44,8 +44,8 @@ prior <- list(mu0a=rep(0,ncol(data$Za)),
               nu0=3,
               D0=diag(2))
 
-out <- mcmc_me_ln(data,init,prior,10000,burn=2000,p0=0.85)
-out2 <- mcmc_ln_ln(data,init,prior,2000,burn=1000,p0=0.85)
+out <- mcmc_me_ln(data,init,prior,2000,burn=1000,p0=0.85)
+out <- mcmc_ln_ln(data,init,prior,2000,burn=1000,p0=0.85)
 
 
 check <- ppred_ln(out,data,1000)
@@ -63,7 +63,9 @@ summary(check$complyy); apply(pcy,2,function(x){sum(x>450/7)/length(x)})
 
 out$accept0/out$prop0;out$accept1/out$prop1
 plot(apply(out$b1,2,function(x){(length(unique(x))-1)/length(x)}))
-prob <- pnorm(data$Za%*%colMeans(out$alpha)+colMeans(out$b1))
+plot(apply(out$latentx,2,function(x){(length(unique(x))-1)/length(x)}))
+
+Hprob <- pnorm(data$Za%*%colMeans(out$alpha)+colMeans(out$b1))
 plot(prob)
 #prob vs modpar
 plot((sqrt(out$sigma2)))
