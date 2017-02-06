@@ -18,16 +18,16 @@ diff <- pams %>% group_by(fileID) %>% summarise(nobs=length(METS_per_minute_5.2)
 
 fcn <- function(data,skip){
   n <- length(data)
-  out <- matrix(0,ncol=2,nrow=(n))
+  out <- matrix(0,ncol=2,nrow=n)
   bout <- 1
   i <- 1
-  while(i < n){
+  while(i <= n){
     
-    if(data[i] >= 3){
+    if((data[i] >= 3)){
       count <- 0
       strt <- i
       i = i+1
-      while(data[i] >= 3 | count < skip){
+      while((data[i] >= 3 | count < skip) & (i <=n)){
         if(data[i] < 3){
           count = count+1
           i = i+1
@@ -37,10 +37,21 @@ fcn <- function(data,skip){
         }
       }
       end <- i-1
+      
+      #eliminate possibility of last skip minutes being < 3 mets
+      count2 <- 0
+      for(j in 0:(skip)){
+        if(data[end-j] < 3){
+          count2 <- count2+1
+        }
+      }
+      end <- end-count2
+      
+      
       i = i+1
 
       if((end-strt>=9) & (sum(data[strt:end])>=30)){
-        out[bout,] < c(strt,end)
+        out[bout,] <- c(strt,end)
         bout <- bout+1
       }
     }
