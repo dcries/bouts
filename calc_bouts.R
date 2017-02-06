@@ -1,5 +1,8 @@
 library(dplyr)
 
+setwd("C:\\Users\\dcries\\github\\bouts\\data")
+pams <- read.csv('ISU_PAMS_2_minute_export.csv')
+
 pams <- read.csv("~/Downloads/ISU_PAMS_2_minute_export.csv")
 
 #
@@ -16,18 +19,19 @@ diff <- pams %>% group_by(fileID) %>% summarise(nobs=length(METS_per_minute_5.2)
                                         q99 = quantile(METS_per_minute_5.2[-1]-METS_per_minute_5.2[-nobs],probs=0.99,na.rm=T))
 
 
-fcn <- function(data,skip){
+fcn <- function(data,skip,rejuv=10){
   n <- length(data)
-  out <- matrix(0,ncol=2,nrow=n)
+  out <- matrix(NA,ncol=2,nrow=n)
   bout <- 1
   i <- 1
   while(i <= n){
     
     if((data[i] >= 3)){
       count <- 0
+      nbout <- 1
       strt <- i
       i = i+1
-      while((data[i] >= 3 | count < skip) & (i <=n)){
+      while((data[i] >= 3 | count <= skip) & (i <=n) & (count <= skip)){
         if(data[i] < 3){
           count = count+1
           i = i+1
@@ -35,23 +39,31 @@ fcn <- function(data,skip){
         else{
           i = i+1
         }
+        
+        if(i > rejuv){
+          if((i/nbout >= rejuv+skip) & (all(data[(i-skip):(i-1)] > 3))){
+            #print(count)
+            #print(i)
+            count <- 0
+            nbout <- nbout+1
+          }
+        }
+
       }
       end <- i-1
       
       #eliminate possibility of last skip minutes being < 3 mets
       count2 <- 0
-      for(j in 0:(skip)){
-        if(data[end-j] < 3){
-          count2 <- count2+1
-        }
+      while(data[end-count2] < 3){
+        count2 <- count2+1
       }
-      end <- end-count2
+      end2 <- end-count2
       
       
       i = i+1
 
-      if((end-strt>=9) & (sum(data[strt:end])>=30)){
-        out[bout,] <- c(strt,end)
+      if((end2-strt>=9) & (sum(data[strt:end2])>=30)){
+        out[bout,] <- c(strt,end2)
         bout <- bout+1
       }
     }
@@ -61,5 +73,17 @@ fcn <- function(data,skip){
     }
     
   }
-  return(out)
+  
+  cout <- matrix(out[complete.cases(out),],ncol=2)
+  
+  m <- 0
+  
+  if(nrow(cout) > 0){
+    for(i in 1:nrow(cout)){
+      m <- m + sum(data[cout[i,1]:cout[i,2]]) - 30
+    }
+  }
+
+  
+  return(c(nrow(cout),m))
 }
