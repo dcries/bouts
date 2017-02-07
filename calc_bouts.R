@@ -21,7 +21,7 @@ setwd('\\\\my.files.iastate.edu\\Users\\dcries\\Desktop\\research\\pams\\data')
 #pams <- read.csv('ISU_PAMS_2_minute_export.csv')
 finalpams <- read.csv('FinalPAMSDataSetNew.csv')
 
-calc_bouts <- function(data,skip,rejuv=10){
+calc_bouts <- function(data,id,skip,rejuv=10){
   n <- length(data)
   out <- matrix(NA,ncol=2,nrow=n)
   bout <- 1
@@ -94,7 +94,7 @@ calc_bouts <- function(data,skip,rejuv=10){
     outmat[1,1] = outmat[1,2] = 0
   }
 
-  
+  outmat <- cbind(outmat,rep(id,n))
   return(outmat[complete.cases(outmat),])
 }
 
@@ -123,10 +123,8 @@ set_day <- function(date){
   return(dayn)
 }
 
-nzeros <- rep(0,8)
-bouts1 <- matrix(NA,nrow=nrow(pams),ncol=3)
-for(i in 4:8){
-  bouts1 <- matrix(NA,nrow=nrow(pams),ncol=3)
+for(i in c(1,2,4:8)){
+  bouts1 <- matrix(NA,nrow=nrow(pams),ncol=4)
   
   pams <- read.csv(paste0('ISU_PAMS_',i,'_minute_export.csv'))
   fileid <- read.csv(paste0('ISUfileIDs_Q',i,'.csv'),header=FALSE)
@@ -137,21 +135,20 @@ for(i in 4:8){
   pams$date <- ymd_hm(paste0(pams$Year,"-",pams$Month,"-",pams$Day, " ", pams$Hour, ":", pams$Minute))
   pams <- pams %>% group_by(fileID) %>% mutate(nday=set_day(date))
   #eliminate data for which <90% of day is recorded?
-  cutoff <- 0.9*1440
   mins <- pams %>% group_by(fileID) %>% summarise(total1=sum(nday==1),
                                             total2=sum(nday==2),
                                             total3=sum(nday==3),
                                             total4=sum(nday==4))
-
+  cutoff <- 0.8*1440
   rm1 <- mins$fileID[mins$total1 < cutoff]
   rm2 <- mins$fileID[mins$total2 < cutoff]
   rm3 <- mins$fileID[mins$total3 < cutoff]
   rm4 <- mins$fileID[mins$total4 < cutoff]
+
+  pams=pams[ !(((pams$fileID %in% rm1)&(pams$nday==1)) | ((pams$fileID %in% rm2)&(pams$nday==2)) | ((pams$fileID %in% rm3)&(pams$nday==3)) | ((pams$fileID %in% rm4)&(pams$nday==4)) | (pams$nday>4) ) ,]
   
-  a=pams[ !(((pams$fileID %in% rm1)&(pams$nday==1)) | ((pams$fileID %in% rm2)&(pams$nday==2)) | ((pams$fileID %in% rm3)&(pams$nday==3)) | ((pams$fileID %in% rm4)&(pams$nday==4))) ,]
-  
-  for(j in 1:length(unique(pams$fileID))){
-    temp <- matrix(calc_bouts(pams$METS_per_minute_5.2[pams$fileID==j],2,10),ncol=2)
+  for(j in unique(pams$fileID)){
+    temp <- matrix(calc_bouts(pams$METS_per_minute_5.2[pams$fileID==j],j,2,10),ncol=3)
     temp2 <- cbind(temp,rep(fileid[fileid[,1]==j,2],nrow(temp)))
     
     bouts1 <- rbind(bouts1,temp2)
@@ -160,7 +157,7 @@ for(i in 4:8){
   
   #remove NAs to get correct dimension
   bouts1 <- as.data.frame(bouts1[complete.cases(bouts1),])
-  names(bouts1) <- c("mets","bout","id")
+  names(bouts1) <- c("mets","bout","fileid", "id")
   
   for(j in 1:nrow(bouts1)){
     bouts1$age[j] <- finalpams$Age[bouts1$id[j]==finalpams$id][1]
@@ -197,6 +194,20 @@ bouts7 <- read.csv("bouts7.csv")
 bouts8 <- read.csv("bouts8.csv")
 
 bouts <- rbind(bouts1,bouts2,bouts4,bouts5,bouts6,bouts7,bouts8)
+
+remove3 <- bouts %>% group_by(id) %>% summarise(n=length(unique(fileid)))
+remove3 <- unlist(remove3[which(remove3$n==3),"id"])
+removefileid <- rep(0,length(remove3))
+
+for(i in 1:length(remove3)){
+  removefileid[i] <- unique(bouts$fileid[bouts$id==remove3[i]])[3]
+}
+
+bouts=subset(bouts, !fileid %in% removefileid)
+
+bouts=bouts %>% group_by(id) %>% mutate(rep=fileid/unique(fileid)[1])
+bouts$rep[bouts$rep > 1] <- 2
+
 write.csv(bouts,file="bouts.csv",row.names=FALSE)
 
 #----------------------------------------------------------
