@@ -49,6 +49,8 @@ talk about how this is much more common in nutrition
 We propose a measurement error model to estimate the distribution of moderate to vigorous physical activity in adults while accounting for demographic information. This will allow us to estimate the compliance with the guidelines and understand which groups are more likely to comply with the guidelines. In addition, we will develop calibration methods so future studies will not need to use expensive measures of EE, or only a small subsample with the more expensive measure. 
 
 
+To calculate what constitues a ``bout", we follow the 8 out of 10 minutes at at least 3 METs criteria \cite{kim}.
+
 \clearpage
 \bibliographystyle{unsrt} %style of bibliography
 \bibliography{bouts} %tells BibTeX to create a list of references using

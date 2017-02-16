@@ -1,0 +1,260 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref, lastpage, fancyhdr,multicol,caption,subcaption,tabularx}
+\usepackage{amsmath,graphicx}
+\usepackage{float}
+
+\usepackage{geometry}
+\usepackage{pdflscape}
+
+
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+\usepackage{natbib} %need this for bibtex
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+
+\lhead{}
+\chead{}
+\rhead{}
+
+\usepackage{setspace} %for double spacing
+\doublespacing
+
+
+\begin{document}
+
+<<setup,echo=FALSE,message=FALSE>>=
+library(ggplot2)
+library(dplyr)
+library(reshape)
+library(rjags)
+library(gridExtra)
+library(scales)
+
+setwd("C:\\Users\\dcries\\github\\bouts\\data")
+boutsraw <- read.csv("bouts.csv")
+bouts <- read.csv("finalbouts.csv")
+
+
+
+@
+
+
+<<p1,echo=FALSE,cache=TRUE,warning=FALSE>>=
+
+bybout = boutsraw %>% group_by(id,rep,bout) %>% summarise(totalp = sum(mets),
+                                                    totalpadj = sum(mets)-30,
+                                                    age=age[1],
+                                                    gender=gender[1],
+                                                    bmi=bmi[1],
+                                                    education=education[1],
+                                                    employed=employed[1],
+                                                    income=income[1],
+                                                    black=black[1],
+                                                    hispanic=hispanic[1],
+                                                    smoke=smoke[1],
+                                                    occupation=occupation[1],
+                                                    married=married[1])
+bybout$totalpadj[bybout$totalpadj==-30] <- 0
+bybout$boutadj <- bybout$bout
+bybout$boutadj[bybout$bout >= 10] <- 10
+
+meas2 <- unique(bouts$id)[which(table(bouts$id)==2)]
+bouts2rep <- bouts[bouts$id %in% meas2,]
+bouts2rep$nboutsc <- bouts2rep$nbouts #cap nbouts at 20
+bouts2rep$nboutsc[bouts2rep$nbouts >= 10] <- 10 #cap nbouts at 20
+
+
+heat <- bouts2rep %>% group_by(id) %>% summarise(nbouts1=nboutsc[1],
+                                     nbouts2=nboutsc[2],
+                                     out=paste0(nboutsc[1]," ",nboutsc[2]),
+                                     diff=nboutsc[1]-nboutsc[2],
+                                     diffuc=nbouts[1]-nbouts[2],
+                                     mnbouts=mean(nbouts),
+                                     snbouts=sd(nbouts),
+                                     dnbouts=nbouts[2]-nbouts[1],
+                                     mtotalexcess=mean(totalexcess),
+                                     stotalexcess=sd(totalexcess),
+                                     dtotalexcess=totalexcess[2]-totalexcess[1])
+
+
+count <- rep(0,121)
+for(i in 0:10){
+  for(j in 0:10){
+    count[i*11+j+1] <- sum(heat$nbouts1==i & heat$nbouts2==j)
+  }
+}
+
+heatdf <- data.frame(nbouts1=rep(0:10,each=11),nbouts2=rep(0:10,11),count=count)
+heatdf$nbouts1 <- as.factor(heatdf$nbouts1)
+heatdf$nbouts2 <- as.factor(heatdf$nbouts2)
+qn <- quantile(heatdf$count,probs=c(0.01,0.1,0.25,0.5,0.75,0.9,0.99))
+qn01 <- rescale(c(qn, range(heatdf$count))) 
+
+ggplot(data=heatdf,aes(x=nbouts1,y=nbouts2)) + geom_tile(aes(fill=count)) + 
+  geom_text(aes(label=count)) + #+ scale_fill_gradient(low = "white", high = "red") 
+  scale_fill_gradientn (
+  colours = colorRampPalette(c( "white", "darkred"))(120),
+  values = c(0,qn01[2:7],1)) + xlab("number of bouts obs 1") + ylab("number of bouts obs 2")
+
+@
+
+<<p1a,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+qplot(data=heat,x=diffuc,geom="bar") + ggtitle("difference in number of bouts from rep 1 to rep 2") + theme_bw() + xlab("difference in nbouts by individual")
+
+
+@
+
+<<p1b,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+q2 <- qplot(data=heat,x=mtotalexcess,y=stotalexcess) + theme_bw() + xlab("mean total excess") + ylab("sd total excess")
+q3 <- qplot(data=heat,x=mnbouts,y=snbouts) + theme_bw()
+
+grid.arrange(q2,q3,nrow=2)
+
+@
+
+<<p1c,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE,eval=FALSE>>=
+qqnorm(heat$dtotalexcess);qqline(heat$dtotalexcess)
+@
+
+
+<<p2,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+bouts$nbouts2 <- bouts$nbouts
+bouts$nbouts2[bouts$nbouts >= 5] <- 5
+bouts$nbouts2 <- as.factor(bouts$nbouts2)
+bouts$avgtotalexcess <- 0
+bouts$avgtotalexcess[bouts$nbouts != 0] <- bouts$totalexcess[bouts$nbouts != 0]/bouts$nbouts[bouts$nbouts != 0]
+
+p1 <- qplot(data=bouts,x=nbouts2,y=total,group=nbouts2,geom="boxplot") + ylim(c(0,3000))+ theme_bw() + xlab("number of bouts") + ylab("total minutes in MVPA ")
+p2 <- qplot(data=bouts,x=nbouts2,y=totalexcess,group=nbouts2,geom="boxplot") + ylim(c(0,3000))+ theme_bw() + ylab("total minutes in MVPA adjusted (minus 10 for every bout)") + xlab("number of bouts")
+
+grid.arrange(p1,p2,nrow=1)
+@
+
+<<p2bb,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+qplot(data=bouts,x=nbouts2,y=totalexcess,group=nbouts2,geom="boxplot",facets=~rep) + ggtitle("total excess minutes by number of bouts in a day faceted by rep") + ylim(c(0,2500))+ theme_bw() + xlab("number of bouts") + ylab("excess minutes in MVPA")
+@
+
+
+<<p2b,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+p4 <- qplot(data=bybout,x=boutadj,y=totalpadj,group=boutadj,geom="boxplot") + ggtitle("total excess minutes by bout number") + ylim(c(0,350))+ theme_bw() + xlab("bout number") + ylab("adjust minutes in bout") 
+p2b <- qplot(data=bouts,x=nbouts2,y=avgtotalexcess,group=nbouts2,geom="boxplot") + ggtitle("average excess minutes by number of bouts in a day") + ylim(c(0,500))+ theme_bw() + xlab("number of bouts") + ylab("average total excess minutes") +geom_smooth(method = "lm", se=FALSE, aes(group=1)) 
+
+grid.arrange(p2b,p4,nrow=2)
+@
+
+
+<<p2c,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+p12 <- qplot(data=bybout,x=boutadj,y=totalpadj) + geom_smooth(method="lm") + ggtitle("total excess minutes by bout number")+ theme_bw()+ xlab("bout number") + ylab("adjust minutes in bout")
+p13 <- qplot(data=bouts,x=nbouts,y=avgtotalexcess)+ geom_smooth(method="lm") + ggtitle("average excess minutes by number of bouts in a day")+ theme_bw()+ xlab("number of bouts") + ylab("average total excess minutes")
+
+grid.arrange(p13,p12,nrow=2)
+@
+
+
+<<p3, echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+l <- mean(bouts$nbouts)
+lv <- nrow(bouts)*dpois(0:max(bouts$nbouts),l)
+
+lambda <- rgamma(10000,l^2,rate=l) 
+simy <- rpois(10000,lambda)
+pg_l_1 <- nrow(bouts)*table(simy)/length(simy)
+pg_l_1 <- c(pg_l_1,rep(0,max(bouts$nbouts)+1-length(pg_l_1)))
+
+alpha2 <- l^2/5 #mean=l, var=1
+beta2 <- l/5
+lambda2 <- rgamma(10000,alpha2,rate=beta2)
+simy2 <- rpois(10000,lambda2)
+pg_l_5 <- nrow(bouts)*table(simy2)/length(simy2)
+pg_l_5 <- c(pg_l_5,rep(0,max(bouts$nbouts)+1-length(pg_l_5)))
+
+# modelf <- "
+# model
+# {
+#   for(i in 1:n){
+#   y[i] ~ dpois(lambda[i])
+#   lambda[i] ~ dgamma(alpha, beta)
+#   }
+#   
+#   beta ~ dgamma(1,1)
+#   alpha ~ dgamma(1,1)
+#   
+# }
+# "
+# 
+# datf <- list(y=bouts$nbouts,
+#              n=nrow(bouts))
+# mf = jags.model(textConnection(modelf), datf,n.adapt=1000,n.chains=3)
+# rf = coda.samples(mf, c("alpha", "beta"), n.iter=2000)
+
+alpha3 <- 0.984 #jags
+beta3 <- 0.3033
+lambda3 <- rgamma(10000,alpha3,rate=beta3)
+simy3 <- rpois(10000,lambda3)
+pg_l_j <- nrow(bouts)*table(simy3)/length(simy3)
+pg_l_j <- c(pg_l_j,rep(0,max(bouts$nbouts)+1-length(pg_l_j)))
+
+obs <- rep(0,max(bouts$nbouts)+1)
+for(i in 0:max(bouts$nbouts)){
+  obs[i+1] <- sum(bouts$nbouts==i)
+}
+
+l <- mean(bouts$nbouts)
+lv <- nrow(bouts)*dpois(0:max(bouts$nbouts),l)
+
+df <- data.frame(obs=obs,pois=lv,pg_l_j=pg_l_j,id=0:max(bouts$nbouts))
+mdf <- melt(df,id.vars="id")
+
+p3 <- ggplot(data=mdf, aes(x=id,y=value,fill=variable)) + 
+  geom_bar(stat="identity",alpha=0.5,position="dodge") + theme_bw() + xlim(c(-1,20))+ theme_bw()
+
+p2c <- qplot(data=bouts,x=nbouts,y=totalexcess,group=nbouts,geom="boxplot") + ggtitle("total excess minutes by number of bouts in a day")+ theme_bw() + xlab("number of bouts") + ylab("total excess minutes") +geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) + xlim(c(1,20))
+
+p2d <- qplot(data=bouts,x=nbouts,y=sqrt(totalexcess),group=nbouts,geom="boxplot") + ggtitle("sqrt total excess minutes by number of bouts in a day")+ theme_bw() + xlab("number of bouts") + ylab("total excess minutes")+geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) + xlim(c(1,20))
+
+grid.arrange(p2c,p2d,nrow=2)
+
+@
+
+
+<<p4, echo=FALSE,cache=TRUE,fig.height=4,warning=FALSE,message=FALSE>>=
+ aa <- bybout %>% group_by(id,rep) %>% summarise(s=sum(totalp),
+                                                 sadj=sum(totalpadj))
+ aaa <- aa %>% group_by(id) %>% filter(length((id))==2) %>% summarise(diff=s[2]-s[1],
+                                                                      diffadj=sadj[2]-sadj[1])
+
+qplot(x=bouts2rep$totalexcess[bouts2rep$rep==1],y=bouts2rep$totalexcess[bouts2rep$rep==2]) + geom_abline(slope = 1,intercept = 0)+ theme_bw() + xlab("total excess minutes in trial 1") + ylab("total excess minutes in trial 2")
+
+@
+
+
+
+<<p5, echo=FALSE,cache=TRUE,fig.height=5,warning=FALSE,message=FALSE>>=
+p6 <- qplot(data=aaa,x=diff) + xlim(c(-2000,2000))+ theme_bw() + xlab("difference in total minutes for individual between trials")
+p7 <- qplot(data=aaa,x=diffadj) + xlim(c(-2000,2000))+ theme_bw() + xlab("difference in excess minutes for individual between trials")
+
+grid.arrange(p6,p7)
+@
+
+
+<<p6, echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE,message=FALSE>>=
+p8 <- ggplot(data=subset(bouts,!is.na(Weekend)),aes(x=nbouts,y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..])) + 
+  geom_bar() + facet_wrap(~Weekend) + theme_bw() + ylab("proportion") + xlab("number of bouts") + ggtitle("faceted by weekend(1) or weekday(0)")
+
+p9 <- ggplot(data=subset(bouts,!is.na(Weekend)),aes(x=totalexcess,y=..density..)) + 
+  geom_histogram() + facet_wrap(~Weekend) + theme_bw()
+
+grid.arrange(p8,p9,nrow=2)
+@
+
+
+\end{document}
