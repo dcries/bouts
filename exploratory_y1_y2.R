@@ -270,3 +270,83 @@ m2 <- (glm((totalexcess+0.01)~Weekend,data=bouts,family="Gamma"))
 
 summary(bouts$totalexcess[bouts$Weekend==0])
 summary(bouts$totalexcess[bouts$Weekend==1])
+
+#-----------------------------------------
+#tests
+#difference in totalexcess min from trial 1 to trial 2
+trial1 <- bouts %>% group_by(id) %>% filter(length((id))==2, rep==1)
+trial2 <- bouts %>% group_by(id) %>% filter(length((id))==2, rep==2)
+
+t.test(trial1$totalexcess,trial2$totalexcess,paired=TRUE)
+wilcox.test(trial1$totalexcess,trial2$totalexcess,paired=TRUE)
+qqnorm(trial1$totalexcess-trial2$totalexcess);qqline(trial1$totalexcess-trial2$totalexcess)
+shapiro.test(trial1$totalexcess-trial2$totalexcess)
+
+#test distributional differences
+ks.test(bouts$totalexcess[bouts$rep==1],bouts$totalexcess[bouts$rep==2])
+
+#difference in nbouts min from trial 1 to trial 2
+t.test(trial1$nbouts,trial2$nbouts,paired=TRUE)
+wilcox.test(trial1$nbouts,trial2$nbouts,paired=TRUE)
+qqnorm(trial1$nbouts-trial2$nbouts);qqline(trial1$nbouts-trial2$nbouts)
+shapiro.test(trial1$nbouts-trial2$nbouts)
+
+#test distributional differences
+ks.test(bouts$nbouts[bouts$rep==1],bouts$nbouts[bouts$rep==2])
+
+#nbouts of weekday vs weekend
+ks.test(bouts$nbouts[bouts$Weekend==0],bouts$nbouts[bouts$Weekend==1])
+#excess minutes of weekday vs weekend
+ks.test(bouts$totalexcess[bouts$Weekend==0],bouts$totalexcess[bouts$Weekend==1])
+
+#diff in weekday vs weekend for those with both
+week1weekend1 <- bouts %>% group_by(id) %>% filter(length((id))==2, sum(Weekend)==1, rep==1)
+week1weekend2 <- bouts %>% group_by(id) %>% filter(length((id))==2, sum(Weekend)==1, rep==2)
+
+t.test(week1weekend1$totalexcess,week1weekend2$totalexcess,paired=TRUE)
+wilcox.test(week1weekend1$totalexcess,week1weekend2$totalexcess,paired=TRUE)
+qqnorm(week1weekend1$totalexcess-week1weekend2$totalexcess);qqline(week1weekend1$totalexcess-week1weekend2$totalexcess)
+shapiro.test(week1weekend1$totalexcess-week1weekend2$totalexcess)
+
+#
+#test for difference in avg total excess mins by number of bouts, assumes normality which doesn't hold
+m1 <- lm(avgtotalexcess~as.factor(nbouts),data=subset(bouts,nbouts>0))
+anova(m1)
+m1b <- lm(avgtotalexcess~as.factor(nbouts),data=subset(bouts,nbouts>0&nbouts<11))
+anova(m1b)
+m1lm <- lm(avgtotalexcess~(nbouts),data=subset(bouts,nbouts>0))
+m1lmb <- lm(avgtotalexcess~(nbouts),data=subset(bouts,nbouts>0&nbouts<11))
+
+#nonparametric test since normality doesn't hold
+kruskal.test(avgtotalexcess~nbouts,data=subset(bouts,nbouts>0))
+kruskal.test(avgtotalexcess~nbouts,data=subset(bouts,nbouts>0&nbouts<11))
+
+
+#same test but taking log
+qqnorm(log(bouts$avgtotalexcess[bouts$nbouts>0]));qqline(log(bouts$avgtotalexcess[bouts$nbouts>0]))
+shapiro.test(log(bouts$avgtotalexcess[bouts$nbouts>0]))
+
+m1l <- lm(log(avgtotalexcess)~as.factor(nbouts),data=subset(bouts,nbouts>0))
+anova(m1l)
+m1bl <- lm(log(avgtotalexcess)~as.factor(nbouts),data=subset(bouts,nbouts>0&nbouts<11))
+anova(m1bl)
+m1lm <- lm(log(avgtotalexcess)~(nbouts),data=subset(bouts,nbouts>0))
+summary(m1lm)
+m1lmb <- lm(log(avgtotalexcess)~(nbouts),data=subset(bouts,nbouts>0&nbouts<11))
+summary(m1lmb)
+
+#test for diff in total excess mins by bout number, assumes normality which doesn't hold
+m2 <- lm(totalpadj~as.factor(bout),data=subset(bybout,bout>0))
+anova(m2)
+m2b <- lm(totalpadj~as.factor(bout),data=subset(bybout,bout>0&bout<11))
+anova(m2b)
+m2lm <- lm(totalpadj~(bout),data=subset(bybout,bout>0))
+m2lmb <- lm(totalpadj~(bout),data=subset(bybout,bout>0&bout<11))
+
+#nonparametric test since normality doesn't hold
+kruskal.test(totalpadj~bout,data=subset(bybout,bout>0))
+kruskal.test(totalpadj~bout,data=subset(bybout,bout>0&bout<11))
+
+
+#contingency table for nbouts1 and nbouts2
+table(trial1$bout,trial2$bout)

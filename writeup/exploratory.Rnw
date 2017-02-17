@@ -109,8 +109,11 @@ ggplot(data=heatdf,aes(x=nbouts1,y=nbouts2)) + geom_tile(aes(fill=count)) +
 @
 
 <<p1a,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
-qplot(data=heat,x=diffuc,geom="bar") + ggtitle("difference in number of bouts from rep 1 to rep 2") + theme_bw() + xlab("difference in nbouts by individual")
+q1a <- qplot(data=heat,x=diffuc,geom="bar") + ggtitle("difference in number of bouts from rep 1 to rep 2") + theme_bw() + xlab("difference in nbouts by individual")
 
+q1b <- qplot(data=heat,x=abs(diffuc),geom="bar") + ggtitle("abs difference in number of bouts") + theme_bw() + xlab("absolute difference in nbouts by individual")
+
+grid.arrange(q1a,q1b,nrow=2)
 
 @
 
@@ -143,23 +146,6 @@ grid.arrange(p1,p2,nrow=1)
 <<p2bb,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
 qplot(data=bouts,x=nbouts2,y=totalexcess,group=nbouts2,geom="boxplot",facets=~rep) + ggtitle("total excess minutes by number of bouts in a day faceted by rep") + ylim(c(0,2500))+ theme_bw() + xlab("number of bouts") + ylab("excess minutes in MVPA")
 @
-
-
-<<p2b,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
-p4 <- qplot(data=bybout,x=boutadj,y=totalpadj,group=boutadj,geom="boxplot") + ggtitle("total excess minutes by bout number") + ylim(c(0,350))+ theme_bw() + xlab("bout number") + ylab("adjust minutes in bout") 
-p2b <- qplot(data=bouts,x=nbouts2,y=avgtotalexcess,group=nbouts2,geom="boxplot") + ggtitle("average excess minutes by number of bouts in a day") + ylim(c(0,500))+ theme_bw() + xlab("number of bouts") + ylab("average total excess minutes") +geom_smooth(method = "lm", se=FALSE, aes(group=1)) 
-
-grid.arrange(p2b,p4,nrow=2)
-@
-
-
-<<p2c,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
-p12 <- qplot(data=bybout,x=boutadj,y=totalpadj) + geom_smooth(method="lm") + ggtitle("total excess minutes by bout number")+ theme_bw()+ xlab("bout number") + ylab("adjust minutes in bout")
-p13 <- qplot(data=bouts,x=nbouts,y=avgtotalexcess)+ geom_smooth(method="lm") + ggtitle("average excess minutes by number of bouts in a day")+ theme_bw()+ xlab("number of bouts") + ylab("average total excess minutes")
-
-grid.arrange(p13,p12,nrow=2)
-@
-
 
 <<p3, echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
 l <- mean(bouts$nbouts)
@@ -226,6 +212,35 @@ grid.arrange(p2c,p2d,nrow=2)
 @
 
 
+<<resid,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+m1 <- lm(totalexcess~nbouts,data=bouts)
+m2 <- lm(sqrt(totalexcess)~nbouts,data=bouts)
+
+r1 <- qplot(x=predict(m1),y=resid(m1))+geom_smooth(method="lm") + xlim(c(0,2000)) + theme_bw() + ggtitle("residual plot for linear model totalexcessmin~nbouts")
+r2 <-  qplot(x=predict(m2),y=resid(m2))+geom_smooth(method="lm") + xlim(c(0,65))+ theme_bw() + ggtitle("residual plot for linear model sqrt(totalexcessmin)~nbouts")
+grid.arrange(r1,r2,nrow=2)
+@
+
+
+
+<<p2b,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+p4 <- qplot(data=bybout,x=boutadj,y=totalpadj,group=boutadj,geom="boxplot") + ggtitle("total excess minutes by bout number") + ylim(c(0,350))+ theme_bw() + xlab("bout number") + ylab("adjust minutes in bout") 
+p2b <- qplot(data=bouts,x=nbouts2,y=avgtotalexcess,group=nbouts2,geom="boxplot") + ggtitle("average excess minutes by number of bouts in a day") + ylim(c(0,500))+ theme_bw() + xlab("number of bouts") + ylab("average total excess minutes")  #+geom_smooth(method = "lm", se=FALSE, aes(group=1)) 
+
+grid.arrange(p2b,p4,nrow=2)
+@
+
+
+<<p2c,echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE>>=
+p12 <- qplot(data=bybout,x=boutadj,y=totalpadj) + geom_smooth(method="lm") + ggtitle("total excess minutes by bout number")+ theme_bw()+ xlab("bout number") + ylab("adjust minutes in bout")
+p13 <- qplot(data=bouts,x=nbouts,y=avgtotalexcess)+ geom_smooth(method="lm") + ggtitle("average excess minutes by number of bouts in a day")+ theme_bw()+ xlab("number of bouts") + ylab("average total excess minutes") + xlim(c(1,30))
+
+grid.arrange(p13,p12,nrow=2)
+@
+
+
+
+
 <<p4, echo=FALSE,cache=TRUE,fig.height=4,warning=FALSE,message=FALSE>>=
  aa <- bybout %>% group_by(id,rep) %>% summarise(s=sum(totalp),
                                                  sadj=sum(totalpadj))
@@ -255,6 +270,18 @@ p9 <- ggplot(data=subset(bouts,!is.na(Weekend)),aes(x=totalexcess,y=..density..)
 
 grid.arrange(p8,p9,nrow=2)
 @
+
+
+<<p7, echo=FALSE,cache=TRUE,fig.height=10,warning=FALSE,message=FALSE>>=
+week1weekend1 <- bouts %>% group_by(id) %>% filter(length((id))==2, sum(Weekend)==1)
+
+week1weekend1 <- week1weekend1[ order(week1weekend1$id, week1weekend1$Weekend), ]
+diffbyweekend <- week1weekend1 %>% group_by(id) %>% summarise(diff=totalexcess[2]-totalexcess[1])
+
+
+qplot(data=diffbyweekend,x=diff) + theme_bw() + ggtitle("Difference in Weekend minutes and weekday minutes for ind with one of each")
+@
+
 
 
 \end{document}

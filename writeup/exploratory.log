@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (MiKTeX 2.9 64-bit) (preloaded format=pdflatex 2016.12.30)  15 FEB 2017 17:34
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (MiKTeX 2.9 64-bit) (preloaded format=pdflatex 2016.12.30)  16 FEB 2017 12:00
 entering extended mode
 **./exploratory.tex
 (exploratory.tex
@@ -542,73 +542,87 @@ File: figure/p2bb-1.pdf Graphic file (type pdf)
 <use figure/p2bb-1.pdf>
 Package pdftex.def Info: figure/p2bb-1.pdf used on input line 115.
 (pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
-Package color Info: Redefining color shadecolor on input line 121.
- <figure/p2b-1.pdf, id=38, 505.89pt x 722.7pt> [4 <./figure/p2-1.pdf>]
-File: figure/p2b-1.pdf Graphic file (type pdf)
- <use figure/p2b-1.pdf>
-Package pdftex.def Info: figure/p2b-1.pdf used on input line 122.
-(pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
-Package color Info: Redefining color shadecolor on input line 128.
-
-<figure/p2c-1.pdf, id=48, 505.89pt x 722.7pt> [5 <./figure/p2bb-1.pdf>]
-File: figure/p2c-1.pdf Graphic file (type pdf)
-
-<use figure/p2c-1.pdf>
-Package pdftex.def Info: figure/p2c-1.pdf used on input line 129.
-(pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
-Package color Info: Redefining color shadecolor on input line 135.
- <figure/p3-1.pdf, id=58, 505.89pt x 722.7pt> [6 <./figure/p2b-1.pdf>]
+Package color Info: Redefining color shadecolor on input line 120.
+ <figure/p3-1.pdf, id=38, 505.89pt x 722.7pt> [4 <./figure/p2-1.pdf>]
 File: figure/p3-1.pdf Graphic file (type pdf)
  <use figure/p3-1.pdf>
-Package pdftex.def Info: figure/p3-1.pdf used on input line 136.
+Package pdftex.def Info: figure/p3-1.pdf used on input line 121.
+(pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
+Package color Info: Redefining color shadecolor on input line 127.
+
+<figure/resid-1.pdf, id=48, 505.89pt x 722.7pt> [5 <./figure/p2bb-1.pdf>]
+File: figure/resid-1.pdf Graphic file (type pdf)
+
+<use figure/resid-1.pdf>
+Package pdftex.def Info: figure/resid-1.pdf used on input line 128.
+(pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
+Package color Info: Redefining color shadecolor on input line 135.
+ <figure/p2b-1.pdf, id=58, 505.89pt x 722.7pt> [6 <./figure/p3-1.pdf>]
+File: figure/p2b-1.pdf Graphic file (type pdf)
+ <use figure/p2b-1.pdf>
+Package pdftex.def Info: figure/p2b-1.pdf used on input line 136.
 (pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
 Package color Info: Redefining color shadecolor on input line 142.
 
-<figure/p4-1.pdf, id=68, 505.89pt x 289.08pt> [7 <./figure/p2c-1.pdf>]
+<figure/p2c-1.pdf, id=68, 505.89pt x 722.7pt> [7 <./figure/resid-1.pdf>]
+File: figure/p2c-1.pdf Graphic file (type pdf)
+
+<use figure/p2c-1.pdf>
+Package pdftex.def Info: figure/p2c-1.pdf used on input line 143.
+(pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
+Package color Info: Redefining color shadecolor on input line 151.
+ <figure/p4-1.pdf, id=82, 505.89pt x 289.08pt> [8 <./figure/p2b-1.pdf>]
 File: figure/p4-1.pdf Graphic file (type pdf)
-
-<use figure/p4-1.pdf>
-Package pdftex.def Info: figure/p4-1.pdf used on input line 143.
+ <use figure/p4-1.pdf>
+Package pdftex.def Info: figure/p4-1.pdf used on input line 152.
 (pdftex.def)             Requested size: 472.03111pt x 269.73705pt.
-Package color Info: Redefining color shadecolor on input line 150.
- <figure/p5-1.pdf, id=82, 505.89pt x 361.35pt> [8 <./figure/p3-1.pdf>]
-File: figure/p5-1.pdf Graphic file (type pdf)
- <use figure/p5-1.pdf>
-Package pdftex.def Info: figure/p5-1.pdf used on input line 151.
-(pdftex.def)             Requested size: 472.03111pt x 337.17133pt.
-Package color Info: Redefining color shadecolor on input line 157.
+Package color Info: Redefining color shadecolor on input line 159.
 
-<figure/p6-1.pdf, id=92, 505.89pt x 722.7pt>
+<figure/p5-1.pdf, id=92, 505.89pt x 361.35pt> [9 <./figure/p2c-1.pdf>]
+File: figure/p5-1.pdf Graphic file (type pdf)
+
+<use figure/p5-1.pdf>
+Package pdftex.def Info: figure/p5-1.pdf used on input line 160.
+(pdftex.def)             Requested size: 472.03111pt x 337.17133pt.
+Package color Info: Redefining color shadecolor on input line 166.
+ <figure/p6-1.pdf, id=105, 505.89pt x 722.7pt>
 File: figure/p6-1.pdf Graphic file (type pdf)
- <use figure/p6-1.pdf>
-Package pdftex.def Info: figure/p6-1.pdf used on input line 158.
+
+<use figure/p6-1.pdf>
+Package pdftex.def Info: figure/p6-1.pdf used on input line 167.
+(pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
+Package color Info: Redefining color shadecolor on input line 173.
+ <figure/p7-1.pdf, id=106, 505.89pt x 722.7pt> [10 <./figure/p4-1.pdf> <./figur
+e/p5-1.pdf>]
+File: figure/p7-1.pdf Graphic file (type pdf)
+ <use figure/p7-1.pdf>
+Package pdftex.def Info: figure/p7-1.pdf used on input line 174.
 (pdftex.def)             Requested size: 472.03111pt x 674.34264pt.
 
 
 AED: lastpage setting LastPage
-[9 <./figure/p4-1.pdf> <./figure/p5-1.pdf>] [10 <./figure/p6-1.pdf>]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 163.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 163.
-
-(exploratory.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 163.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 163.
+[11 <./figure/p6-1.pdf>] [12 <./figure/p7-1.pdf>]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 180.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 180.
+ (exploratory.aux)
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 180.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 180.
 Package rerunfilecheck Info: File `exploratory.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 163.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 180.
  ) 
 Here is how much of TeX's memory you used:
- 8116 strings out of 493334
- 121767 string characters out of 3139179
+ 8128 strings out of 493334
+ 121970 string characters out of 3139179
  221792 words of memory out of 3000000
- 11541 multiletter control sequences out of 15000+200000
+ 11549 multiletter control sequences out of 15000+200000
  3940 words of font info for 15 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
  36i,12n,43p,297b,431s stack positions out of 5000i,500n,10000p,200000b,50000s
 <C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr10.pfb>
-Output written on exploratory.pdf (10 pages, 721992 bytes).
+Output written on exploratory.pdf (12 pages, 915802 bytes).
 PDF statistics:
- 125 PDF objects out of 1000 (max. 8388607)
- 11 named destinations out of 1000 (max. 500000)
- 56 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 149 PDF objects out of 1000 (max. 8388607)
+ 13 named destinations out of 1000 (max. 500000)
+ 66 words of extra memory for PDF output out of 10000 (max. 10000000)
 
