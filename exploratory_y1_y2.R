@@ -3,6 +3,7 @@ library(dplyr)
 library(reshape)
 library(rjags)
 library(scales)
+library(rcompanion)
 
 setwd("C:\\Users\\dcries\\github\\bouts\\data")
 boutsraw <- read.csv("bouts.csv")
@@ -348,5 +349,101 @@ kruskal.test(totalpadj~bout,data=subset(bybout,bout>0))
 kruskal.test(totalpadj~bout,data=subset(bybout,bout>0&bout<11))
 
 
-#contingency table for nbouts1 and nbouts2
-table(trial1$bout,trial2$bout)
+#contingency table for nbouts1 and nbouts2, but this is paired data
+chisq.test(table(trial1$nbouts,trial2$nbouts))
+
+#------------------------
+#
+ct0 <- matrix(table(trial1$nbouts,trial2$nbouts),nrow=21,byrow=T)
+ct1 <- matrix(table(trial1$nbouts,trial2$nbouts)[1:10,1:10],nrow=10,byrow=T)
+ct1diff <- data.frame(obs2=rep(0:9,10),obs1=rep(0:9,each=10),count=c(ct1-t(ct1)))
+
+
+ggplot(data=ct1diff,aes(x=as.factor(obs1),y=as.factor(obs2))) + geom_tile(aes(fill=count)) + 
+  geom_text(aes(label=count)) + scale_fill_gradientn (
+    colours = colorRampPalette(c("blue" ,"white", "red"))(120),
+    values = c(0,0.5,1))
+
+ggplot(data=ct1diff,aes(x=as.factor(obs1),y=as.factor(obs2))) + geom_tile(aes(fill=abs(count))) + 
+  geom_text(aes(label=abs(count))) + scale_fill_gradient(low = "white", high = "red") 
+  
+
+#-----------------------------
+#McNemar test
+mcnemar.test(ct1)
+mcnemar.test(ct1[1:6,1:6])
+
+# stuart maxwell test
+library(irr)
+stuart.maxwell.mh(ct1[1:6,1:6])
+
+
+
+nominalSymmetryTest(ct1[1:6,1:6],MonteCarlo=TRUE,ntrial=100000,method = "fdr")
+
+
+#--------------------------------------
+#permutation test
+#H_0 : sum abs lower.tri-upper.tri  = 0, ie. trial 1 and trial 2 exchangeable
+# H_a : sum != 0, not exchangeable
+obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
+
+nsim <- 10000
+permute <- rep(0,nsim)
+vals <- as.numeric(ct1)
+for(i in 1:nsim){
+  mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
+  permute[i] <- sum(abs(mat[lower.tri(mat)]-mat[upper.tri(mat)]))
+}
+
+qplot(x=permute) + geom_vline(xintercept=obs,col="red")
+
+#or like this? instead permute obs from trial 1 and trial 2?
+nsim <- 1000
+permutei <- rep(0,nsim)
+nboutmat <- cbind(trial1$nbouts,trial2$nbouts)
+newmat <- matrix(0,nrow=nrow(nboutmat),ncol=ncol(nboutmat))
+for(i in 1:nsim){
+  for(j in 1:nrow(nboutmat)){
+    s <- sample(1:2,2)
+    newmat[j,s[1]] <- nboutmat[j,1]
+    newmat[j,s[2]] <- nboutmat[j,2]
+  }
+  cti <- matrix(table(newmat[,1],newmat[,2])[1:10,1:10],ncol=10,byrow=T)
+  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
+  permutei[i] <- sum(abs(cti[lower.tri(cti)]-cti[upper.tri(cti)]))
+}
+
+qplot(x=permutei) + geom_vline(xintercept=obs,col="red")
+
+#----------------------------------
+#checking exchangeability for y2 total excess minutes
+#or like this? instead permute obs from trial 1 and trial 2?
+#obsy2 <- sum(trial1$totalexcess-trial2$totalexcess)#cor(trial1$totalexcess,trial2$totalexcess)
+obsy2 <- coef(lm(trial1$totalexcess~trial2$totalexcess))[2]
+nsim <- 10000
+permutey2 <- rep(0,nsim)
+nboutmaty2 <- cbind(trial1$totalexcess,trial2$totalexcess)
+newmaty2 <- matrix(0,nrow=nrow(nboutmaty2),ncol=ncol(nboutmaty2))
+for(i in 1:nsim){
+  for(j in 1:nrow(nboutmaty2)){
+    s <- sample(1:2,2)
+    newmaty2[j,s[1]] <- nboutmaty2[j,1]
+    newmaty2[j,s[2]] <- nboutmaty2[j,2]
+  }
+  
+  #permutey2[i] <- sum(newmaty2[,1]-newmaty2[,2])#cor(newmaty2)[1,2]
+  permutey2[i] <- coef(lm(newmaty2[,1]~newmaty2[,2]))[2]#cor(newmaty2)[1,2]
+  
+}
+
+qplot(x=permutey2) + geom_vline(xintercept=obsy2,col="red") + theme_bw()
+
+
+#-----------------------------------------------------
+qplot(data=bouts,nbouts,geom="bar",facets=~rep)
+dendf <- data.frame(nbouts1=trial1$nbouts,nbouts2=trial2$nbouts)
+ggplot(data=dendf,aes(x=nbouts1,y=nbouts2)) + geom_point() + geom_density2d()
+ggplot(data=dendf,aes(x=nbouts1,y=nbouts2)) + 
+  stat_density2d(aes(fill=..density..),geom="tile",contour=FALSE) + 
+  scale_fill_gradient(low="white",high="red") + xlim(c(0,10)) + ylim(c(0,10))

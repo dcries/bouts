@@ -7,3 +7,5 @@ coda
 rjags
 gridExtra
 scales
+lpSolve
+irr

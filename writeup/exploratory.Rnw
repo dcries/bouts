@@ -39,6 +39,7 @@ library(reshape)
 library(rjags)
 library(gridExtra)
 library(scales)
+library(irr)
 
 setwd("C:\\Users\\dcries\\github\\bouts\\data")
 boutsraw <- read.csv("bouts.csv")
@@ -134,7 +135,7 @@ qqnorm(heat$dtotalexcess);qqline(heat$dtotalexcess)
 bouts$nbouts2 <- bouts$nbouts
 bouts$nbouts2[bouts$nbouts >= 5] <- 5
 bouts$nbouts2 <- as.factor(bouts$nbouts2)
-bouts$avgtotalexcess <- 0
+bouts$avgtotalexcess <- 0 
 bouts$avgtotalexcess[bouts$nbouts != 0] <- bouts$totalexcess[bouts$nbouts != 0]/bouts$nbouts[bouts$nbouts != 0]
 
 p1 <- qplot(data=bouts,x=nbouts2,y=total,group=nbouts2,geom="boxplot") + ylim(c(0,3000))+ theme_bw() + xlab("number of bouts") + ylab("total minutes in MVPA ")
@@ -282,6 +283,244 @@ diffbyweekend <- week1weekend1 %>% group_by(id) %>% summarise(diff=totalexcess[2
 qplot(data=diffbyweekend,x=diff) + theme_bw() + ggtitle("Difference in Weekend minutes and weekday minutes for ind with one of each")
 @
 
+%-------------------------------------
+%tests
 
+
+
+<<t1,cache=TRUE>>=
+#test difference in mean totalexcess min from trial 1 to trial 2 paired by individual
+trial1 <- bouts %>% group_by(id) %>% filter(length((id))==2, rep==1)
+trial2 <- bouts %>% group_by(id) %>% filter(length((id))==2, rep==2)
+
+wilcox.test(trial1$totalexcess,trial2$totalexcess,paired=TRUE)
+
+@
+
+<<t2,cache=TRUE,warning=FALSE>>=
+#test difference in distribution of totalexcess min from trial 1 to trial 2
+ks.test(bouts$totalexcess[bouts$rep==1],bouts$totalexcess[bouts$rep==2])
+
+@
+
+
+<<t2b,cache=TRUE,warning=FALSE>>=
+#test difference in distribution of  differenced totalexcess min from trial 1 to trial 2 compared to  differenced totalexcess min from trial 2 to trial 1
+a1 <- (trial2$totalexcess-trial1$totalexcess)
+a2 <- (trial1$totalexcess-trial2$totalexcess)
+ks.test(a1,a2)
+@
+
+
+
+<<t3,cache=TRUE>>=
+#difference in mean nbouts min from trial 1 to trial 2
+wilcox.test(trial1$nbouts,trial2$nbouts,paired=TRUE)
+@
+
+
+<<t4,cache=TRUE,warning=FALSE>>=
+#test marginal distributional differences in nbouts from trial 1 to trial 2
+ks.test(bouts$nbouts[bouts$rep==1],bouts$nbouts[bouts$rep==2])
+@
+
+<<t5,cache=TRUE,warning=FALSE>>=
+#nbouts of weekday vs weekend
+ks.test(bouts$nbouts[bouts$Weekend==0],bouts$nbouts[bouts$Weekend==1])
+#excess minutes of weekday vs weekend
+ks.test(bouts$totalexcess[bouts$Weekend==0],bouts$totalexcess[bouts$Weekend==1])
+@
+
+<<t6,cache=TRUE,warning=FALSE>>=
+#test difference in means of total excess in weekday vs weekend for those with both
+week1weekend1 <- bouts %>% group_by(id) %>% filter(length((id))==2, sum(Weekend)==1, rep==1)
+week1weekend2 <- bouts %>% group_by(id) %>% filter(length((id))==2, sum(Weekend)==1, rep==2)
+
+wilcox.test(week1weekend1$totalexcess,week1weekend2$totalexcess,paired=TRUE)
+
+#test difference in means of nbouts in weekday vs weekend for those with both
+wilcox.test(week1weekend1$nbouts,week1weekend2$nbouts,paired=TRUE)
+
+@
+
+
+<<t7,cache=TRUE,warning=FALSE>>=
+#test for difference in avg total excess mins by number of bouts
+#nonparametric test since normality doesn't hold
+kruskal.test(avgtotalexcess~nbouts,data=subset(bouts,nbouts>0))
+kruskal.test(avgtotalexcess~nbouts,data=subset(bouts,nbouts>0&nbouts<11))
+@
+
+<<t8,cache=TRUE,warning=FALSE>>=
+#linear trend on  avgtotalexcess minutes with nbouts as covariate
+m1lm <- lm((avgtotalexcess)~(nbouts),data=subset(bouts,nbouts>0))
+summary(m1lm)
+m1lmb <- lm((avgtotalexcess)~(nbouts),data=subset(bouts,nbouts>0&nbouts<11))
+summary(m1lmb)
+@
+
+
+
+<<t9,cache=TRUE,warning=FALSE>>=
+#test for diff in total excess mins by bout number
+#nonparametric test since normality doesn't hold
+kruskal.test(totalpadj~bout,data=subset(bybout,bout>0))
+kruskal.test(totalpadj~bout,data=subset(bybout,bout>0&bout<11))
+@
+
+
+<<t10,cache=TRUE,warning=FALSE>>=
+#linear trend on total excess minutes with bout number as covariate
+m2lm <- lm(totalpadj~(bout),data=subset(bybout,bout>0))
+summary(m2lm)
+m2lmb <- lm(totalpadj~(bout),data=subset(bybout,bout>0&bout<11))
+summary(m2lmb)
+
+@
+
+
+<<t11,cache=TRUE,warning=FALSE>>=
+#testing marginal homogeneity of 2 way table of nbouts
+ct1 <- matrix(table(trial1$nbouts,trial2$nbouts)[1:10,1:10],nrow=10,byrow=T)
+stuart.maxwell.mh(ct1[1:6,1:6])
+stuart.maxwell.mh(ct1)
+
+
+@
+
+
+<<t11b,cache=TRUE,warning=FALSE>>=
+#Bowker's test of symmetry, ie. generalization of McNemar's test
+mcnemar.test(ct1[1:6,1:6])
+mcnemar.test(ct1)
+
+@
+
+
+<<t12,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5,eval=FALSE,echo=FALSE>>=
+#permutation test
+#H_0 : sum |lower.tri-upper.tri|  = 0, ie. trial 1 and trial 2 exchangeable
+# H_a : sum > 0, not exchangeable
+obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
+
+nsim <- 10000
+permute <- rep(0,nsim)
+vals <- as.numeric(ct1)
+for(i in 1:nsim){
+  samps <- sample(vals,length(vals),replace=FALSE)
+  mat <- matrix(samps,ncol=ncol(ct1),nrow=nrow(ct1))
+  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
+  permute[i] <- sum(abs(mat[lower.tri(mat)]-mat[upper.tri(mat)]))
+}
+
+qplot(x=permute) + geom_vline(xintercept=obs,col="red") + theme_bw() + xlab("test statistic")
+
+@
+
+<<t12b,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5>>=
+#permutation test
+#H_0 : sum |lower.tri-upper.tri|  = 0, ie. trial 1 and trial 2 exchangeable
+# H_a : sum > 0, not exchangeable
+obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
+nsim <- 10000
+permutei <- rep(0,nsim)
+nboutmat <- cbind(trial1$nbouts,trial2$nbouts) 
+newmat <- matrix(0,nrow=nrow(nboutmat),ncol=ncol(nboutmat))
+for(i in 1:nsim){
+  for(j in 1:nrow(nboutmat)){
+    s <- sample(1:2,2)
+    newmat[j,s[1]] <- nboutmat[j,1]
+    newmat[j,s[2]] <- nboutmat[j,2]
+  }
+  cti <- matrix(table(newmat[,1],newmat[,2])[1:10,1:10],ncol=10,byrow=T)
+  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
+  permutei[i] <- sum(abs(cti[lower.tri(cti)]-cti[upper.tri(cti)]))
+}
+
+qplot(x=permutei) + geom_vline(xintercept=obs,col="red") + theme_bw()
+
+@
+
+
+<<t12c,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5,echo=FALSE,eval=FALSE>>=
+#permutation test
+#H_0 : sum |lower.tri-upper.tri|  = 0, ie. trial 1 and trial 2 exchangeable
+# H_a : sum > 0, not exchangeable
+#switch labels on both individual and group
+obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
+nsim <- 10000
+permuteb <- rep(0,nsim)
+nboutmat <- cbind(trial1$nbouts,trial2$nbouts)
+newmatb <- matrix(0,nrow=nrow(nboutmat),ncol=ncol(nboutmat))
+for(i in 1:nsim){
+  for(j in 1:nrow(nboutmat)){
+    s <- sample(1:2,2)
+    newmatb[j,s[1]] <- nboutmat[j,1]
+    newmatb[j,s[2]] <- nboutmat[j,2]
+  }
+  #valsb <- as.numeric(newmatb)
+  sampsb <- sample(1:nrow(newmatb),nrow(newmatb),replace=FALSE)
+  finalmat <- matrix(newmatb[sampsb,]
+  ctb <- matrix(table(finalmat[,1],finalmat[,2])[1:10,1:10],ncol=10,byrow=T)
+  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
+  permuteb[i] <- sum(abs(ctb[lower.tri(ctb)]-cti[upper.tri(ctb)]))
+}
+
+qplot(x=permuteb) + geom_vline(xintercept=obs,col="red") + theme_bw()
+
+@
+
+
+<<t13,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5,echo=FALSE,eval=FALSE>>=
+#bootstrap test
+#H_0 : sum |lower.tri-upper.tri|  = 0, ie. trial 1 and trial 2 exchangeable
+# H_a : sum > 0, not exchangeable
+obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
+nsim <- 10000
+permuteb <- rep(0,nsim)
+newmat <- matrix(0,nrow=nrow(nboutmat),ncol=ncol(nboutmat))
+for(i in 1:nsim){
+  for(j in 1:nrow(nboutmat)){
+    s <- sample(1:2,2,replace=T)
+    newmat[j,s[1]] <- nboutmat[j,1]
+    newmat[j,s[2]] <- nboutmat[j,2]
+  }
+  ctb <- matrix(table(newmat[,1],newmat[,2])[1:10,1:10],ncol=10,byrow=T)
+  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
+  permuteb[i] <- sum(abs(ctb[lower.tri(ctb)]-ctb[upper.tri(ctb)]))
+}
+
+qplot(x=permuteb) + geom_vline(xintercept=obs,col="red") + theme_bw()
+
+
+@
+
+
+
+<<t14,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5>>=
+#checking exchangeability for y2 total excess minutes
+#or like this? instead permute obs from trial 1 and trial 2?
+#obsy2 <- sum(trial1$totalexcess-trial2$totalexcess)#cor(trial1$totalexcess,trial2$totalexcess)
+obsy2 <- coef(lm(trial1$totalexcess~trial2$totalexcess))[2]
+nsim <- 10000
+permutey2 <- rep(0,nsim)
+nboutmaty2 <- cbind(trial1$totalexcess,trial2$totalexcess)
+newmaty2 <- matrix(0,nrow=nrow(nboutmaty2),ncol=ncol(nboutmaty2))
+for(i in 1:nsim){
+  for(j in 1:nrow(nboutmaty2)){
+    s <- sample(1:2,2)
+    newmaty2[j,s[1]] <- nboutmaty2[j,1]
+    newmaty2[j,s[2]] <- nboutmaty2[j,2]
+  }
+  
+  #permutey2[i] <- sum(newmaty2[,1]-newmaty2[,2])#cor(newmaty2)[1,2]
+  permutey2[i] <- coef(lm(newmaty2[,1]~newmaty2[,2]))[2]#cor(newmaty2)[1,2]
+  
+}
+
+qplot(x=permutey2) + geom_vline(xintercept=obsy2,col="red") + theme_bw()
+
+
+@
 
 \end{document}
