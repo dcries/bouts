@@ -437,63 +437,11 @@ for(i in 1:nsim){
   permutei[i] <- sum(abs(cti[lower.tri(cti)]-cti[upper.tri(cti)]))
 }
 
-qplot(x=permutei) + geom_vline(xintercept=obs,col="red") + theme_bw()
+qplot(x=permutei,geom="bar") + geom_vline(xintercept=obs,col="red") + theme_bw()
 
 @
 
 
-<<t12c,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5,echo=FALSE,eval=FALSE>>=
-#permutation test
-#H_0 : sum |lower.tri-upper.tri|  = 0, ie. trial 1 and trial 2 exchangeable
-# H_a : sum > 0, not exchangeable
-#switch labels on both individual and group
-obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
-nsim <- 10000
-permuteb <- rep(0,nsim)
-nboutmat <- cbind(trial1$nbouts,trial2$nbouts)
-newmatb <- matrix(0,nrow=nrow(nboutmat),ncol=ncol(nboutmat))
-for(i in 1:nsim){
-  for(j in 1:nrow(nboutmat)){
-    s <- sample(1:2,2)
-    newmatb[j,s[1]] <- nboutmat[j,1]
-    newmatb[j,s[2]] <- nboutmat[j,2]
-  }
-  #valsb <- as.numeric(newmatb)
-  sampsb <- sample(1:nrow(newmatb),nrow(newmatb),replace=FALSE)
-  finalmat <- matrix(newmatb[sampsb,]
-  ctb <- matrix(table(finalmat[,1],finalmat[,2])[1:10,1:10],ncol=10,byrow=T)
-  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
-  permuteb[i] <- sum(abs(ctb[lower.tri(ctb)]-cti[upper.tri(ctb)]))
-}
-
-qplot(x=permuteb) + geom_vline(xintercept=obs,col="red") + theme_bw()
-
-@
-
-
-<<t13,cache=TRUE,warning=FALSE,fig.height=4,fig.width=5,echo=FALSE,eval=FALSE>>=
-#bootstrap test
-#H_0 : sum |lower.tri-upper.tri|  = 0, ie. trial 1 and trial 2 exchangeable
-# H_a : sum > 0, not exchangeable
-obs <- sum(abs(ct1[lower.tri(ct1)]-ct1[upper.tri(ct1)]))
-nsim <- 10000
-permuteb <- rep(0,nsim)
-newmat <- matrix(0,nrow=nrow(nboutmat),ncol=ncol(nboutmat))
-for(i in 1:nsim){
-  for(j in 1:nrow(nboutmat)){
-    s <- sample(1:2,2,replace=T)
-    newmat[j,s[1]] <- nboutmat[j,1]
-    newmat[j,s[2]] <- nboutmat[j,2]
-  }
-  ctb <- matrix(table(newmat[,1],newmat[,2])[1:10,1:10],ncol=10,byrow=T)
-  #mat <- ct1[sample(nrow(ct1)),sample(ncol(ct1))]
-  permuteb[i] <- sum(abs(ctb[lower.tri(ctb)]-ctb[upper.tri(ctb)]))
-}
-
-qplot(x=permuteb) + geom_vline(xintercept=obs,col="red") + theme_bw()
-
-
-@
 
 
 
@@ -520,6 +468,123 @@ for(i in 1:nsim){
 
 qplot(x=permutey2) + geom_vline(xintercept=obsy2,col="red") + theme_bw()
 
+
+@
+
+<<t15,cache=TRUE,warning=FALSE,echo=FALSE>>=
+#checking exchangeability for y2 total excess minutes conditional on nbouts
+#nbouts is taken to be mean of two observations
+permute_y2 <- function(data,nsim){
+  data <- as.matrix(data)
+  obs <- coef(lm(data[,1]~data[,2]))[2]
+  permute <- rep(0,nsim)
+  #nboutmat <- as.matrix(y2check[y2check$mnbouts==0.5,c("totalexcess1","totalexcess2")])
+  newmat <- matrix(0,nrow=nrow(data),ncol=ncol(data))
+  for(i in 1:nsim){
+    for(j in 1:nrow(data)){
+      s <- sample(1:2,2)
+      newmat[j,s[1]] <- data[j,1]
+      newmat[j,s[2]] <- data[j,2]
+    }
+    permute[i] <- coef(lm(newmat[,1]~newmat[,2]))[2]#cor(newmaty2)[1,2]
+  }
+  return(permute)
+}
+
+y2check <- bouts2rep %>% group_by(id) %>% summarise(mnbouts=mean(nbouts),
+                                         totalexcess1=totalexcess[1],
+                                         totalexcess2=totalexcess[2]
+                                         )
+nsim <- 5000
+
+#mean nbouts = 0.5
+obsy2_05 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==0.5)))[2]
+permutey2_05 <- permute_y2(y2check[y2check$mnbouts==0.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_05) + geom_vline(xintercept=obsy2_05,col="red") + theme_bw()
+
+#mean nbouts = 1
+obsy2_1 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==1)))[2]
+permutey2_1 <- permute_y2(y2check[y2check$mnbouts==1,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_1) + geom_vline(xintercept=obsy2_1,col="red") + theme_bw()
+
+#mean nbouts = 1.5
+obsy2_15 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==1.5)))[2]
+permutey2_15 <- permute_y2(y2check[y2check$mnbouts==1.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_15) + geom_vline(xintercept=obsy2_15,col="red") + theme_bw()
+
+#mean nbouts = 2
+obsy2_2 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==2)))[2]
+permutey2_2 <- permute_y2(y2check[y2check$mnbouts==2,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_2) + geom_vline(xintercept=obsy2_2,col="red") + theme_bw()
+
+#mean nbouts = 2.5
+obsy2_25 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==2.5)))[2]
+permutey2_25 <- permute_y2(y2check[y2check$mnbouts==2.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_25) + geom_vline(xintercept=obsy2_25,col="red") + theme_bw()
+
+#mean nbouts = 3
+obsy2_3 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==3)))[2]
+permutey2_3 <- permute_y2(y2check[y2check$mnbouts==3,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_3) + geom_vline(xintercept=obsy2_3,col="red") + theme_bw()
+
+#mean nbouts = 3.5
+obsy2_35 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==3.5)))[2]
+permutey2_35 <- permute_y2(y2check[y2check$mnbouts==3.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_35) + geom_vline(xintercept=obsy2_35,col="red") + theme_bw()
+
+#mean nbouts = 4
+obsy2_4 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==4)))[2]
+permutey2_4 <- permute_y2(y2check[y2check$mnbouts==4,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_4) + geom_vline(xintercept=obsy2_4,col="red") + theme_bw()
+
+#mean nbouts = 4.5
+obsy2_45 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==4.5)))[2]
+permutey2_45 <- permute_y2(y2check[y2check$mnbouts==4.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_45) + geom_vline(xintercept=obsy2_45,col="red") + theme_bw()
+
+#mean nbouts = 5
+obsy2_5 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==5)))[2]
+permutey2_5 <- permute_y2(y2check[y2check$mnbouts==5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_5) + geom_vline(xintercept=obsy2_5,col="red") + theme_bw()
+
+#mean nbouts = 5.5
+obsy2_55 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==5.5)))[2]
+permutey2_55 <- permute_y2(y2check[y2check$mnbouts==5.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_55) + geom_vline(xintercept=obsy2_55,col="red") + theme_bw()
+
+#mean nbouts = 6
+obsy2_6 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==6)))[2]
+permutey2_6 <- permute_y2(y2check[y2check$mnbouts==6,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_6) + geom_vline(xintercept=obsy2_6,col="red") + theme_bw()
+
+#mean nbouts = 6.5
+obsy2_65 <- coef(lm(totalexcess1~totalexcess2,data=subset(y2check,mnbouts==6.5)))[2]
+permutey2_65 <- permute_y2(y2check[y2check$mnbouts==6.5,c("totalexcess1","totalexcess2")],nsim)
+#qplot(x=permutey2_65) + geom_vline(xintercept=obsy2_65,col="red") + theme_bw()
+
+
+permutey2_df <- cbind(permutey2_05,permutey2_1,permutey2_15,permutey2_2,
+                      permutey2_25,permutey2_3,permutey2_35,permutey2_4,
+                      permutey2_45,permutey2_5,permutey2_55,permutey2_6,
+                      permutey2_65)
+
+truey2 <- c(obsy2_05,obsy2_1,obsy2_15,obsy2_2,obsy2_25,
+            obsy2_3,obsy2_35,obsy2_4,obsy2_45,obsy2_5,
+            obsy2_55,obsy2_6,obsy2_65)
+
+permutey2_pvals <- rep(0,ncol(permutey2_df))
+for(i in 1:ncol(permutey2_df)){
+  permutey2_pvals[i] <- sum(permutey2_df[,i]<truey2[i])/nsim
+}
+
+
+permutey2_mdf <- melt(permutey2_df)
+permutey2_mdf$true <- rep(truey2,each=nsim)
+
+ggplot(data=permutey2_mdf,aes(x=value,group=X2)) + geom_histogram() + 
+  geom_vline(aes(xintercept=true),colour="red") + facet_wrap(~X2,scales="free") + theme_bw()
+
+permutey2_pvals
 
 @
 

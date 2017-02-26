@@ -591,18 +591,12 @@
   \hlstd{permutei[i]} \hlkwb{<-} \hlkwd{sum}\hlstd{(}\hlkwd{abs}\hlstd{(cti[}\hlkwd{lower.tri}\hlstd{(cti)]}\hlopt{-}\hlstd{cti[}\hlkwd{upper.tri}\hlstd{(cti)]))}
 \hlstd{\}}
 
-\hlkwd{qplot}\hlstd{(}\hlkwc{x}\hlstd{=permutei)} \hlopt{+} \hlkwd{geom_vline}\hlstd{(}\hlkwc{xintercept}\hlstd{=obs,}\hlkwc{col}\hlstd{=}\hlstr{"red"}\hlstd{)} \hlopt{+} \hlkwd{theme_bw}\hlstd{()}
+\hlkwd{qplot}\hlstd{(}\hlkwc{x}\hlstd{=permutei,}\hlkwc{geom}\hlstd{=}\hlstr{"bar"}\hlstd{)} \hlopt{+} \hlkwd{geom_vline}\hlstd{(}\hlkwc{xintercept}\hlstd{=obs,}\hlkwc{col}\hlstd{=}\hlstr{"red"}\hlstd{)} \hlopt{+} \hlkwd{theme_bw}\hlstd{()}
 \end{alltt}
-
-
-{\ttfamily\noindent\itshape\color{messagecolor}{\#\# `stat\_bin()` using `bins = 30`. Pick better value with `binwidth`.}}\end{kframe}
+\end{kframe}
 \includegraphics[width=\maxwidth]{figure/t12b-1} 
 
 \end{knitrout}
-
-
-
-
 
 
 
@@ -638,6 +632,19 @@
 {\ttfamily\noindent\itshape\color{messagecolor}{\#\# `stat\_bin()` using `bins = 30`. Pick better value with `binwidth`.}}\end{kframe}
 \includegraphics[width=\maxwidth]{figure/t14-1} 
 
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+
+
+{\ttfamily\noindent\itshape\color{messagecolor}{\#\# `stat\_bin()` using `bins = 30`. Pick better value with `binwidth`.}}\end{kframe}
+\includegraphics[width=\maxwidth]{figure/t15-1} 
+\begin{kframe}\begin{verbatim}
+##  [1] 0.0800 0.8566 0.9380 0.1660 0.8268 0.1682 0.8546 0.8466 0.0844 0.8180
+## [11] 0.7664 0.7506 0.5918
+\end{verbatim}
+\end{kframe}
 \end{knitrout}
 
 \end{document}
