@@ -114,6 +114,7 @@ for(i in 0:10){
   }
 }
 
+
 heatdf <- data.frame(nbouts1=rep(0:10,each=11),nbouts2=rep(0:10,11),count=count)
 qn <- quantile(heatdf$count,probs=c(0.01,0.1,0.25,0.5,0.75,0.9,0.99))
 qn01 <- rescale(c(qn, range(heatdf$count))) 
