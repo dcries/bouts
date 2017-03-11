@@ -128,5 +128,5 @@ boutscast$nboutsdiff <- boutscast$nbouts1-boutscast$nbouts2
 boutscast$totalexcessdiff <- boutscast$totalexcess1-boutscast$totalexcess2
 boutscast$weekenddiff <- boutscast$weekend1-boutscast$weekend2
 
-y2exch <- lm(totalexcessdiff~nboutsdiff+weekenddiff,data=boutscast)
+y2exch <- lm(totalexcessdiff~nboutsdiff+(weekenddiff),data=boutscast)
 summary(y2exch)

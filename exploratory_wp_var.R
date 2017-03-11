@@ -55,7 +55,7 @@ model
   sigmau <- 1/sqrt(tau)
 }
 "
-trues <- bouts %>% group_by(id) %>% summarise(s=(nbouts[2]-nbouts[1]),s2=sd(totalexcess),mean=mean(nbouts),total=nbouts[2]+nbouts[1])
+trues <- bouts %>% group_by(id) %>% summarise(s=(nbouts[2]-nbouts[1]),s2=sd(totalexcess),mean=mean(nbouts),total=nbouts[2]+nbouts[1],std = sd(nbouts))
 X <- model.matrix(~bmi+age+factor(gender,labels=c(0,1),levels=c(1,2))+factor(smoke,labels=c(0,1),levels=c(1,2)),data=subset(bouts,rep==1))
 #1 male, 0 female
 #1 smoker, 0 non-smoker
@@ -139,11 +139,15 @@ tempg <- rep(0,2*n)
 m_medg <- rep(0,nreps)
 m_rangeg <- rep(0,nreps)
 m_0sg <- rep(0,nreps)
+m_00sg <- rep(0,nreps)
+m_no0sg <- rep(0,nreps)
+
 #m_max <- rep(0,nreps)
 m_countg <- matrix(0,ncol=10,nrow=nreps)
 within_diffg <- matrix(0,nrow=nrow(trues),ncol=nreps)
 within_mean <- matrix(0,nrow=nrow(trues),ncol=nreps)
 within_sum <- matrix(0,nrow=nrow(trues),ncol=nreps)
+within_sd <- matrix(0,nrow=nrow(trues),ncol=nreps)
 
 #p <- unlist(rg[,"p"])
 p <- as.matrix(rg)[,c(paste0("p[",1:nrow(X),"]"))]
@@ -161,10 +165,15 @@ for(i in 1:nreps){
   within_diffg[,i] <- apply(tempmatg,1,function(x){return(x[2]-x[1])})
   within_mean[,i] <- rowMeans(tempmatg)
   within_sum[,i] <- rowSums(tempmatg)
+  within_sd[,i] <- apply(tempmatg,1,sd)
+  
   
   m_medg[i] <- median(tempg)
   m_rangeg[i] <- range(tempg)[2] - range(tempg)[1]
   m_0sg[i] <- sum(tempg==0)
+  m_00sg[i] <- sum(rowSums(tempmatg)==0)
+  m_no0sg[i] <- sum(apply(tempmatg,1,function(x){return(!0%in%x)}))
+  
   for(j in 1:ncol(m_count)){
     m_countg[i,j] <- sum(tempg==j)
   }
@@ -224,21 +233,34 @@ qplot(data=full,y=s2,x=gender,group=as.factor(gender),geom="boxplot")
 # qplot(x=range_pp) + geom_vline(xintercept=range_obs,colour="red")
 
 #check marginal for gamma
-p1 <- qplot(x=m_medg) + geom_vline(xintercept=median(datf$y),colour="red") +xlab("median") + theme_bw()
-p2 <- qplot(x=m_0sg) + geom_vline(xintercept=sum(datf$y==0),colour="red") +xlab("Number of Zeros")+ theme_bw()
-p3 <- qplot(x=m_rangeg) + geom_vline(xintercept=range(datf$y)[2]-range(datf$y)[1],colour="red") +xlab("Range") + theme_bw()
-grid.arrange(p1,p2,p3,nrow=1)
+p1 <- qplot(x=m_medg) + geom_vline(xintercept=median(datf$y),colour="red") +xlab("median") + theme_bw() + theme(axis.title.x = element_text(size=9))
+p2 <- qplot(x=m_0sg) + geom_vline(xintercept=sum(datf$y==0),colour="red") +xlab("Number of Zeros")+ theme_bw() + theme(axis.title.x = element_text(size=9))
+p3 <- qplot(x=m_rangeg,geom="bar") + geom_vline(xintercept=range(datf$y)[2]-range(datf$y)[1],colour="red") +xlab("Range") + theme_bw() + theme(axis.title.x = element_text(size=9))
+
+p4 <-qplot(x=m_00sg) + geom_vline(xintercept=sum(rowSums(matrix(bouts$nbouts,ncol=2,byrow=T))==0),colour="red") +xlab("Zero both trials") + theme_bw() + theme(axis.title.x = element_text(size=9))
+p5 <-qplot(x=m_no0sg) + geom_vline(xintercept=sum(apply(matrix(bouts$nbouts,ncol=2,byrow=T),1,function(x){return(!0%in%x)})),colour="red") +xlab("Zero neither trial") + theme_bw() + theme(axis.title.x = element_text(size=9))
+
+grid.arrange(p4,p5,p3,nrow=1)
 
 #checking conditional for gamma
 obs <- trues$s
 mean_obs <- mean(obs); sd_obs <- sd(obs); range_obs <- range(obs)[2]-range(obs)[1]
 mean_ppg <- colMeans(within_diffg); sd_ppg <- apply(within_diffg,2,sd); range_ppg <- apply(within_diffg,2,function(x){return(range(x)[2]-range(x)[1])})
 
-c1 <- qplot(x=mean_ppg) + geom_vline(xintercept=mean_obs,colour="red")+xlab("Mean") + theme_bw()
-c2 <- qplot(x=sd_ppg) + geom_vline(xintercept=sd_obs,colour="red")+xlab("Standard Deviation") + theme_bw()
-c3 <- qplot(x=range_ppg) + geom_vline(xintercept=range_obs,colour="red")+xlab("Range") + theme_bw()
-grid.arrange(c1,c2,c3,nrow=1)
+mean_sd <- colMeans(within_sd); #median_sd <- apply(within_sd,2,median)
 
+
+c1 <- qplot(x=mean_ppg) + geom_vline(xintercept=mean_obs,colour="red")+xlab("Mean within-person Difference") + theme_bw() + theme(axis.title.x = element_text(size=9))
+c2 <- qplot(x=sd_ppg) + geom_vline(xintercept=sd_obs,colour="red")+xlab("Standard Deviation") + theme_bw()
+c3 <- qplot(x=range_ppg,geom="bar") + geom_vline(xintercept=range_obs,colour="red")+xlab("Within-person Range") + theme_bw()+ theme(axis.title.x = element_text(size=9))
+c4 <- qplot(x=mean_sd) + geom_vline(xintercept=mean(trues$std),colour="red") + xlab("Mean Within-person SD") + theme_bw()+ theme(axis.title.x = element_text(size=9))
+
+grid.arrange(c1,c4,c3,nrow=1)
+
+#c5 <- qplot(x=median_sd) + geom_vline(xintercept=median(trues$std),colour="red")
+
+grid.arrange(p4,p5,p3,c1,c4,c3,nrow=2)
+grid.arrange(p4,p5,c4,c3,nrow=2)
 
 #posterior for beta
 pg <- cbind(eta,betag)

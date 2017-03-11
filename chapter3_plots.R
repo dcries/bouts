@@ -34,11 +34,11 @@ bouts$avgtotalexcess[bouts$nbouts != 0] <- bouts$totalexcess[bouts$nbouts != 0]/
 
 q3 <- qplot(data=bouts,x=(nbouts),y=totalexcess,geom="boxplot",group=as.factor(nbouts)) +
   xlim(c(0.5,13.5)) + theme_bw() + xlab("Number of Bouts in 24 Hours") + 
-  ylab("Total Excess MET-mins in 24 Hours")
+  ylab("Total Excess MET-mins in 24 Hours")+ theme(axis.title.x=element_text(size=8),axis.title.y=element_text(size=8))
 
 q4 <- qplot(data=bouts,x=nbouts,y=avgtotalexcess,geom="boxplot",group=nbouts)+
   xlim(c(0.5,13.5)) + theme_bw() + xlab("Number of Bouts in 24 Hours") + 
-  ylab("Average Excess MET-mins by Number of Bouts in 24 Hours")
+  ylab("Average Excess MET-mins by Number of Bouts in 24 Hours")+ theme(axis.title.x=element_text(size=8),axis.title.y=element_text(size=8))
 
 grid.arrange(q3,q4,nrow=1)
 
