@@ -1,6 +1,7 @@
 library(rjags)
 library(ggplot2)
 library(dplyr)
+library(gridExtra)
 
 setwd("C:\\Users\\dcries\\github\\bouts\\data")
 bouts <- read.csv("finalbouts2rep.csv")
@@ -9,19 +10,19 @@ modelg <- "
 model
 {
   for(i in 1:n){
-    #y[i] ~ dpois(lambda[ind[i]] )
-    y[i] ~ dpois(lambda[i] )
+    y[i] ~ dpois(lambda[ind[i]] )
+    #y[i] ~ dpois(lambda[i] )
 
-    lambda[i] ~ dgamma(eta,theta[ind[i]])
+    #lambda[i] ~ dgamma(eta,theta[ind[i]])
 
     #y[i] ~ dpois(lambda2[ind[i]] )
   }
   
   for(i in 1:n2){
-    mu[i] <- exp(inprod(X[i,],beta))#+epsilon[i]))
+    mu[i] <- exp(inprod(X[i,],beta+epsilon[i]))
     theta[i] <- eta/mu[i]
-    #lambda[i] ~ dgamma(eta,theta[i])
-    #epsilon[i] ~ dnorm(0,taue)
+    lambda[i] ~ dgamma(eta,theta[i])
+    epsilon[i] ~ dnorm(0,taue)
     #lambda2[i] <- lambda[i]*(1-u[i])
     #u[i] ~ dbern(p[i])
     #logit(p[i]) <- inprod(X[i,],eta)
@@ -31,8 +32,8 @@ model
     #eta[i] ~ dnorm(0,1/1000)
   }
   eta ~ dgamma(1,1)
-  #taue ~ dgamma(1,1)
-  #sigmae <- 1/sqrt(taue)
+  taue ~ dgamma(1,1)
+  sigmae <- 1/sqrt(taue)
   #p ~ dbeta(1,1)
 }
 "
@@ -68,7 +69,7 @@ datf <- list(y=bouts$nbouts,
              X=X,
              k=ncol(X))
 mg = jags.model(textConnection(modelg), datf,n.adapt=1000,n.chains=3)
-rg = coda.samples(mg, c("beta","eta","lambda"), n.iter=2000)
+rg = coda.samples(mg, c("beta","eta","lambda","sigmae"), n.iter=2000)
 gelman.diag(rg[,c(paste0("beta[",1:ncol(X),"]"),"eta")])
 
 #mln = jags.model(textConnection(modelln), datf,n.adapt=1000,n.chains=3)
@@ -132,9 +133,9 @@ gelman.diag(rg[,c(paste0("beta[",1:ncol(X),"]"),"eta")])
 #simulate from marginal for poisson gamma
 nreps <- 2000
 n <- nrow(trues)
-ind <- sample(1:nrow(lambda),nreps)
 betag <- as.matrix(rg)[,c(paste0("beta[",1:ncol(X),"]"))]
 eta <- unlist(rg[,"eta"])
+ind <- sample(1:nrow(betag),nreps)
 tempg <- rep(0,2*n)
 m_medg <- rep(0,nreps)
 m_rangeg <- rep(0,nreps)
@@ -150,15 +151,15 @@ within_sum <- matrix(0,nrow=nrow(trues),ncol=nreps)
 within_sd <- matrix(0,nrow=nrow(trues),ncol=nreps)
 
 #p <- unlist(rg[,"p"])
-p <- as.matrix(rg)[,c(paste0("p[",1:nrow(X),"]"))]
+#p <- as.matrix(rg)[,c(paste0("p[",1:nrow(X),"]"))]
 sigmae <- unlist(rg[,"sigmae"])
 
 for(i in 1:nreps){
   #lam <- rgamma(n,alpha[ind[i]],rate=beta[ind[i]])
-  #lam <- rgamma(n,eta[ind[i]],rate=eta[ind[i]]/exp(X%*%(betag[ind[i],])))#+rnorm(n,0,sigmae[ind[i]])))
-  #tempg <- rpois(2*n,rep(lam,each=2))#*rbinom(2*n,1,rep(1-p[ind[i],],each=2))
-  lam <- rgamma(2*n,rep(eta[ind[i]],2*n),rate=rep(eta[ind[i]]/exp(X%*%(betag[ind[i],])),each=2))#+rnorm(n,0,sigmae[ind[i]])))
-  tempg <- rpois(2*n,lam)#*rbinom(2*n,1,rep(1-p[ind[i],],each=2))
+  lam <- rgamma(n,eta[ind[i]],rate=eta[ind[i]]/exp(X%*%betag[ind[i],]+rnorm(n,0,sigmae[ind[i]])))
+  tempg <- rpois(2*n,rep(lam,each=2))#*rbinom(2*n,1,rep(1-p[ind[i],],each=2))
+  #lam <- rgamma(2*n,rep(eta[ind[i]],2*n),rate=rep(eta[ind[i]]/exp(X%*%(betag[ind[i],])),each=2))#+rnorm(n,0,sigmae[ind[i]])))
+  #tempg <- rpois(2*n,lam)#*rbinom(2*n,1,rep(1-p[ind[i],],each=2))
   
   tempmatg <- matrix(tempg,ncol=2,byrow=TRUE)
   
@@ -174,7 +175,7 @@ for(i in 1:nreps){
   m_00sg[i] <- sum(rowSums(tempmatg)==0)
   m_no0sg[i] <- sum(apply(tempmatg,1,function(x){return(!0%in%x)}))
   
-  for(j in 1:ncol(m_count)){
+  for(j in 1:ncol(m_countg)){
     m_countg[i,j] <- sum(tempg==j)
   }
 }
