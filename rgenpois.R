@@ -1,6 +1,7 @@
 rgenpois <-
-  function(n, mu = stop("no mu arg"), phi = stop("no phi arg"), omega = 0)
+  function(n, mu = stop("no mu arg"), lambda = stop("no lambda arg"), omega = 0)
   {
+    phi <- 1/(1-lambda)
     # check if parameters are valid
     if(omega < 0) {return("omega has to be in [0,1]!")}
     if(omega > 1) {return("omega has to be in [0,1]!")}
