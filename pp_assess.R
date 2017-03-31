@@ -36,6 +36,8 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim){
   y1y2regcoef <- rep(0,nsim)
   pcomply <- rep(0,nsim)
   
+  p2 <- rep(0,nsim)
+  
   for(i in 1:nsim){
     x1 <- rgamma(n,eta[i],eta[i]/mux1[i,])
     mux2 <- exp(Zb%*%betax[i,-(nb+1)] + betax[i,nb+1]*x1)
@@ -69,10 +71,22 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim){
     
     x3 <- 30*x1 + x2
     pcomply[i] <- sum(x3>450/7)/n
+    
+    #-----------------------------------
+    p1 <- matrix(1,nrow=n,ncol=7)
+    for(j in 1:7){
+      x1 <- rgamma(n,eta[i],eta[i]/mux1[i,])
+      mux2 <- exp(Zb%*%betax[i,-(nb+1)] + betax[i,nb+1]*x1)
+      x2 <- rgamma(n,theta[i],theta[i]/mux2)
+      x3 <- 30*x1 + x2
+      p1[x3 < 90,j] <- 0
+    }
+    p2[i] <- sum(rowSums(p1)>=5)/nrow(p1)
+    
   }
   out <- data.frame(cbind(y1zeroboth,y1zeroeither,y1meanwpsd,y1wprange,y1overallrange,
               y2zeroboth,y2zeroeither,y2greaterthan,y1y2regcoef,pcomply))
-  return(list(out=out,y1=y1,y2=y2,x2=x2,mux2=mux2,x3=x3))
-  return(out)
+  return(list(out=out,y1=y1,y2=y2,x2=x2,mux2=mux2,x3=x3,p2=p2))
+  #return(out)
   
 }

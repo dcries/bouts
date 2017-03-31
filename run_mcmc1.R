@@ -27,6 +27,7 @@ x1propb <- y1rowmean/y1rowvar
 x1propa <- y1rowmean^2/y1rowvar
 #mom estimator for et, alpha=407, beta=329
 # muy 4.01,.06,.002
+#currentalpha=c(-.32,0.47,.001)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
 init = list(currentbetay=c(0,0,1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0.48),currentalpha=c(-.32,0.47,.001),
             currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011),currentsigma2y=0.95,currentsigma2x=6.73,
@@ -36,26 +37,29 @@ init = list(currentbetay=c(0,0,1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0.48),
             x1propa=x1propa,x1propb=x1propb,
             currenttheta=1,betaxtune=c(0.0001,0.00001,0.00001,0.00001,0.00001,0.0001), 
             propax2=1,propbx2=0.5,
-            currentlambda=0.5,propl1=1,propl2=1)
+            currentlambda=0.5,propl1=1,propl2=1,
+            currentdelta=1,propd1=1,propd2=1,alphatune=rep(0.0000001,ncol(data$Za)+2))
 
 prior = list(mu0y2=rep(0,3),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,3),V0y2=100*diag(3),V0x1=100*diag(ncol(Za)),
              V0x2=100*diag(ncol(Za)+1),V0a=100*diag(3),a0eta=1,b0eta=1,
              a0x=1,b0x=1,a0y=1,b0y=1,
              a0theta=1,b0theta=1,
-             a0l=1,b0l=1)
+             a0l=1,b0l=1,
+             a0delta=1,b0delta=1)
 
 mcmc = mcmc_2part_1(data=data,init=init,priors=prior,nrep=6000,burn=3000)
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
 apply(mcmc$betax,2,function(x){return(length(unique(x))/length(x))}) 
+apply(mcmc$alpha,2,function(x){return(length(unique(x))/length(x))}) 
 plot(apply(mcmc$latentx1,2,function(x){return((length(unique(x))-1)/length(x))}))
 plot(apply(mcmc$latentx2,2,function(x){return((length(unique(x))-1)/length(x))}))
 (length(unique(mcmc$eta))-1)/length(mcmc$eta)
 (length(unique(mcmc$theta))-1)/length(mcmc$theta)
 (length(unique(mcmc$lambda))-1)/length(mcmc$lambda)
-
+(length(unique(mcmc$delta))-1)/length(mcmc$delta)
 
 
 hist(colMeans(mcmc$latentx1))
@@ -64,33 +68,40 @@ hist(colMeans(mcmc$latentx2))
 plot(mcmc$latentx1[,which.max(rowMeans(data$y1))])
 plot(mcmc$latentx2[,which.max(rowMeans(data$y2))])
 
-plot(mcmc$gamma[,1])
-plot(mcmc$gamma[,2])
-plot(mcmc$gamma[,3])
-plot(mcmc$gamma[,4])
-plot(mcmc$gamma[,5])
+plot(mcmc$gamma[,1],type="l")
+plot(mcmc$gamma[,2],type="l")
+plot(mcmc$gamma[,3],type="l")
+plot(mcmc$gamma[,4],type="l")
+plot(mcmc$gamma[,5],type="l")
 
-plot(mcmc$eta)
-plot(mcmc$theta)
-plot(mcmc$lambda)
+plot(mcmc$eta,type="l")
+plot(mcmc$theta,type="l")
+plot(mcmc$lambda,type="l")
+plot(mcmc$delta,type="l")
 
-plot(mcmc$betay[,1])
-plot(mcmc$betay[,2])
-plot(mcmc$betay[,3])
 
-plot(mcmc$betax[,1])
-plot(mcmc$betax[,2])
-plot(mcmc$betax[,3])
-plot(mcmc$betax[,4])
-plot(mcmc$betax[,5])
-plot(mcmc$betax[,6])
+plot(mcmc$betay[,1],type="l")
+plot(mcmc$betay[,2],type="l")
+plot(mcmc$betay[,3],type="l")
 
-plot(mcmc$alpha[,1])
-plot(mcmc$alpha[,2])
-plot(mcmc$alpha[,3])
+plot(mcmc$betax[,1],type="l")
+plot(mcmc$betax[,2],type="l")
+plot(mcmc$betax[,3],type="l")
+plot(mcmc$betax[,4],type="l")
+plot(mcmc$betax[,5],type="l")
+plot(mcmc$betax[,6],type="l")
+
+plot(mcmc$alpha[,1],type="l")
+plot(mcmc$alpha[,2],type="l")
+plot(mcmc$alpha[,3],type="l")
+plot(mcmc$alpha[,4],type="l")
+plot(mcmc$alpha[,5],type="l")
+plot(mcmc$alpha[,6],type="l")
+plot(mcmc$alpha[,7],type="l")
+
 
 plot(mcmc$sigma2x)
-plot(mcmc$sigma2y)
+plot(mcmc$sigma2y,type="l")
 
 
 ind=which(apply(mcmc$latentx1,2,function(x){return((length(unique(x))-1)/length(x))})<0.1)

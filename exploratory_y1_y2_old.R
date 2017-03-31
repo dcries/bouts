@@ -313,6 +313,8 @@ qqnorm(week1weekend1$totalexcess-week1weekend2$totalexcess);qqline(week1weekend1
 shapiro.test(week1weekend1$totalexcess-week1weekend2$totalexcess)
 
 #
+bouts$avgtotalexcess <- bouts$totalexcess/bouts$nbouts
+bouts$avgtotalexcess[bouts$nbouts==0] <- 0
 #test for difference in avg total excess mins by number of bouts, assumes normality which doesn't hold
 m1 <- lm(avgtotalexcess~as.factor(nbouts),data=subset(bouts,nbouts>0))
 anova(m1)
