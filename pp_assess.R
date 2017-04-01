@@ -10,6 +10,7 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim){
   sigma2y <- mcmcout$sigma2y[ind]
   eta <- mcmcout$eta[ind]
   theta <- mcmcout$theta[ind]
+  delta <- mcmcout$delta[ind]
   lambda <- mcmcout$lambda[ind]
   latentx1 <- mcmcout$latentx1[ind,]
   latentx2 <- mcmcout$latentx2[ind,]
@@ -54,7 +55,8 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim){
     check0 <- y1
     check0[check0 > 0] <- 1
     
-    y2 <- check0*matrix(rlnorm(2*n,rep(log(x2),each=2),rep(sqrt(sigma2y),2*n)),ncol=2,byrow=TRUE)
+    #y2 <- check0*matrix(rlnorm(2*n,rep(log(x2),each=2),rep(sqrt(sigma2y),2*n)),ncol=2,byrow=TRUE)
+    y2 <- check0*matrix(rgamma(2*n,rep(delta[i],2*n),rep(delta[i],2*n)/rep(x2,each=2)),ncol=2,byrow=TRUE)
     
     y1zeroboth[i] <- sum(rowSums(y1)==0)
     y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
