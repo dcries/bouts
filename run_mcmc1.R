@@ -29,7 +29,7 @@ x1propa <- y1rowmean^2/y1rowvar
 # muy 4.01,.06,.002
 #currentalpha=c(-.32,0.47,.001)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
-init = list(currentbetay=c(0,0,1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0.48),currentalpha=c(-.32,0.47,.001),
+init = list(currentbetay=c(0,0,1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0.48),currentalpha=rep(0,ncol(data$Zb)),
             currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011),currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             currentu=rep(0,nrow(data$y1)),gammatune=c(0.00001,0.00001,0.00001,0.00001,0.00001),
@@ -38,17 +38,19 @@ init = list(currentbetay=c(0,0,1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0.48),
             currenttheta=1,betaxtune=c(0.0001,0.00001,0.00001,0.00001,0.00001,0.0001), 
             propax2=1,propbx2=0.5,
             currentlambda=0.5,propl1=1,propl2=1,
-            currentdelta=1,propd1=1,propd2=1,alphatune=rep(0.0000001,ncol(data$Za)+2))
+            currentdelta=1,propd1=1,propd2=1,alphatune=rep(0.0000001,ncol(data$Zb)),
+            currentb=matrix(0,nrow=nrow(data$y1),ncol=3),btune=c(0.001,0.001,0.001),
+            currentSigmab=diag(3)*0.0001)
 
 prior = list(mu0y2=rep(0,3),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
-             mu0a=rep(0,3),V0y2=100*diag(3),V0x1=100*diag(ncol(Za)),
-             V0x2=100*diag(ncol(Za)+1),V0a=100*diag(3),a0eta=1,b0eta=1,
+             mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(3),V0x1=100*diag(ncol(Za)),
+             V0x2=100*diag(ncol(Za)+1),V0a=100*diag(ncol(data$Zb)),a0eta=1,b0eta=1,
              a0x=1,b0x=1,a0y=1,b0y=1,
              a0theta=1,b0theta=1,
              a0l=1,b0l=1,
-             a0delta=1,b0delta=1)
+             a0delta=1,b0delta=1, d0=14, D0=5*diag(3))
 
-mcmc = mcmc_2part_1(data=data,init=init,priors=prior,nrep=6000,burn=3000)
+mcmc = mcmc_2part_1(data=data,init=init,priors=prior,nrep=3000,burn=1000)
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
@@ -56,6 +58,7 @@ apply(mcmc$betax,2,function(x){return(length(unique(x))/length(x))})
 apply(mcmc$alpha,2,function(x){return(length(unique(x))/length(x))}) 
 plot(apply(mcmc$latentx1,2,function(x){return((length(unique(x))-1)/length(x))}))
 plot(apply(mcmc$latentx2,2,function(x){return((length(unique(x))-1)/length(x))}))
+plot(apply(mcmc$b1,2,function(x){return((length(unique(x))-1)/length(x))}))
 (length(unique(mcmc$eta))-1)/length(mcmc$eta)
 (length(unique(mcmc$theta))-1)/length(mcmc$theta)
 (length(unique(mcmc$lambda))-1)/length(mcmc$lambda)
@@ -96,9 +99,14 @@ plot(mcmc$alpha[,2],type="l")
 plot(mcmc$alpha[,3],type="l")
 plot(mcmc$alpha[,4],type="l")
 plot(mcmc$alpha[,5],type="l")
-plot(mcmc$alpha[,6],type="l")
-plot(mcmc$alpha[,7],type="l")
 
+plot(mcmc$sigmab[,1],type="l")
+plot(mcmc$sigmab[,2],type="l")
+plot(mcmc$sigmab[,3],type="l")
+
+plot(mcmc$corrb[,1],type="l")
+plot(mcmc$corrb[,2],type="l")
+plot(mcmc$corrb[,3],type="l")
 
 plot(mcmc$sigma2x)
 plot(mcmc$sigma2y,type="l")
@@ -116,7 +124,7 @@ i=160;plot(mcmc$latentx1[,i]);y1[i,];summary(mcmc$latentx1[,i])
 #-------------------------------------------------------------
 
 weekenddiff <- bouts %>% group_by(id) %>% summarise(diff=Weekend[1]-Weekend[2])
-assess <- pp_assess(mcmc,data$Zb,weekenddiff$diff,1000)
+assess <- pp_assess(mcmc,data$Zb,weekenddiff$diff,200)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))

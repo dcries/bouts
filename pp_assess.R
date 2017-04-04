@@ -79,8 +79,10 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim){
     for(j in 1:7){
       x1 <- rgamma(n,eta[i],eta[i]/mux1[i,])
       mux2 <- exp(Zb%*%betax[i,-(nb+1)] + betax[i,nb+1]*x1)
+      
+      p <- pnorm(Zb%*%(alpha[i,]),0,1)
       x2 <- rgamma(n,theta[i],theta[i]/mux2)
-      x3 <- 30*x1 + x2
+      x3 <- 30*x1 + p*x2
       p1[x3 < 90,j] <- 0
     }
     p2[i] <- sum(rowSums(p1)>=5)/nrow(p1)
