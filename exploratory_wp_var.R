@@ -19,7 +19,7 @@ model
   }
   
   for(i in 1:n2){
-    mu[i] <- exp(inprod(X[i,],beta+epsilon[i]))
+    mu[i] <- exp(inprod(X[i,],beta)+epsilon[i])
     theta[i] <- eta/mu[i]
     lambda[i] ~ dgamma(eta,theta[i])
     epsilon[i] ~ dnorm(0,taue)
@@ -69,7 +69,7 @@ datf <- list(y=bouts$nbouts,
              X=X,
              k=ncol(X))
 mg = jags.model(textConnection(modelg), datf,n.adapt=1000,n.chains=3)
-rg = coda.samples(mg, c("beta","eta","lambda","sigmae"), n.iter=2000)
+rg = coda.samples(mg, c("beta","eta","lambda","sigmae","epsilon"), n.iter=2000)
 gelman.diag(rg[,c(paste0("beta[",1:ncol(X),"]"),"eta")])
 
 #mln = jags.model(textConnection(modelln), datf,n.adapt=1000,n.chains=3)
