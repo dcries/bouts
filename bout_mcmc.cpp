@@ -964,7 +964,7 @@ List mcmc_2part_1(List data,
   arma::mat Zbx;
   ////std::cout << "2\n";
   //std::cout << "7\n";
-  Zbx = arma::join_rows(Zb,currentx1);
+  Zbx = arma::join_rows(Zb,log(currentx1));
   x1x2 = Zb;//arma::join_rows(intercept,arma::join_rows(currentx1,currentx2));
   
   x1x2y = arma::join_rows(intercept,arma::join_rows(currentx1,log(currentx2)));//x1x2;//arma::join_rows(intercept,currentx2);
@@ -1081,7 +1081,7 @@ List mcmc_2part_1(List data,
     
     //x1x2 = arma::join_rows(intercept,arma::join_rows(currentx1,currentx2));
     x1x2y = arma::join_rows(intercept,arma::join_rows(currentx1,log(currentx2)));//x1x2;//arma::join_rows(intercept,currentx2);
-    Zbx = arma::join_rows(Zb,currentx1);
+    Zbx = arma::join_rows(Zb,log(currentx1));
     currentlmux2 = calc_lmu(Zbx,currentbetax,currentb.col(1));
     //currentp = calc_p(x1x2,currentalpha,currentb.col(2));
     currentp = calc_p(currentx1,currentlambda);
