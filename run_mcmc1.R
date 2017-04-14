@@ -2,6 +2,7 @@ library(dplyr)
 library(reshape)
 library(ggplot2)
 library(gridExtra)
+library(MASS)
 
 Rcpp::sourceCpp('C:/Users/dcries/github/bouts/bout_mcmc.cpp')
 source('C:/Users/dcries/github/bouts/rgenpois.R')
@@ -18,8 +19,8 @@ Za$education[Za$education >3 ] <- 1
 Za$hispanic <- abs(Za$hispanic-2)
 
 Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic),data=Za)
-Za[,2] <- scale(Za[,2])
-Za[,4] <- scale(Za[,4])
+#Za[,2] <- scale(Za[,2])
+#Za[,4] <- scale(Za[,4])
 
 new <- bouts[,c("id","rep","nbouts","totalexcess")]
 newm <- melt(new,id.vars=c("id","rep"))
@@ -49,8 +50,8 @@ init = list(currentbetay=rep(0,ncol(data$Za)+1),currentbetax=c(6.4,-.006,0.57,-.
             currentlambda=0.5,propl1=1,propl2=1,
             currentdelta=1,propd1=1,propd2=1,alphatune=rep(0.0000001,ncol(data$Zb)),
             currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
-            currentSigmab=diag(2)*0.0001,currentzeta=sample(1:ncomp,nrow(data$y1),TRUE),
-            currentpi=rep(1/ncomp,ncomp))
+            currentSigmab=diag(2)*0.000000001,currentzeta=sample(1:ncomp,nrow(data$y1),TRUE),
+            currentpi=rep(1/ncomp,ncomp),currentm=max(y1+5))
 
 prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
@@ -71,7 +72,7 @@ apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))})
 #apply(mcmc$alpha,2,function(x){return(length(unique(x))/length(x))}) 
 plot(apply(mcmc$latentx1,2,function(x){return((length(unique(x))-1)/length(x))}))
 #plot(apply(mcmc$latentx2,2,function(x){return((length(unique(x))-1)/length(x))}))
-#plot(apply(mcmc$b1,2,function(x){return((length(unique(x))-1)/length(x))}))
+plot(apply(mcmc$b1,2,function(x){return((length(unique(x))-1)/length(x))}))
 (length(unique(mcmc$eta))-1)/length(mcmc$eta)
 #(length(unique(mcmc$theta))-1)/length(mcmc$theta)
 (length(unique(mcmc$lambda))-1)/length(mcmc$lambda)
@@ -121,15 +122,10 @@ plot(mcmc$betay[,9],type="l")
 # plot(mcmc$betax[,9],type="l")
 
 
-# plot(mcmc$alpha[,1],type="l")
-# plot(mcmc$alpha[,2],type="l")
-# plot(mcmc$alpha[,3],type="l")
-# plot(mcmc$alpha[,4],type="l")
-# plot(mcmc$alpha[,5],type="l")
 
-#plot(mcmc$sigmab[,1],type="l")
-#plot(mcmc$sigmab[,2],type="l")
-#plot(mcmc$corrb,type="l")
+plot(mcmc$sigmab[,1],type="l")
+plot(mcmc$sigmab[,2],type="l")
+plot(mcmc$corrb,type="l")
 
 
 plot(mcmc$sigma2x)
@@ -149,7 +145,7 @@ i=160;plot(mcmc$latentx1[,i]);y1[i,];summary(mcmc$latentx1[,i])
 
 weekenddiff <- bouts %>% group_by(id) %>% summarise(diff=Weekend[1]-Weekend[2])
 assessg <- pp_assess(mcmc,data$Zb,weekenddiff$diff,200,"gamma")
-assessln <- pp_assess(mcmc,data$Zb,weekenddiff$diff,200,"lognormal")
+assessln <- pp_assess(mcmc,data$Zb,weekenddiff$diff,1000,"lognormal")
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
