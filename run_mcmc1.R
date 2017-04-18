@@ -65,6 +65,7 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
 
 mcmc = mcmc_2part_nci1(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 mcmc2 = mcmc_2part_nci2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 # mcmc = mcmc_2part_1(data=data,init=init,priors=prior,nrep=20000,burn=10000)
 # mcmc2 = mcmc_2part_lnln(data=data,init=init,priors=prior,nrep=6000,burn=2000)
@@ -132,8 +133,6 @@ plot(mcmc$sigma2b[,1],type="l")
 plot(mcmc$sigma2b[,2],type="l")
 plot(mcmc$corrb,type="l")
 
-
-plot(mcmc$sigma2x)
 plot(mcmc$sigma2y,type="l")
 
 
@@ -148,9 +147,9 @@ i=160;plot(mcmc$latentx1[,i]);y1[i,];summary(mcmc$latentx1[,i])
 
 #-------------------------------------------------------------
 
-weekenddiff <- bouts %>% group_by(id) %>% summarise(diff=Weekend[1]-Weekend[2])
-assessg <- pp_assess(mcmc,data$Zb,weekenddiff$diff,200,"gamma")
-assessln <- pp_assess(mcmc,data$Zb,weekenddiff$diff,200,"lognormal")
+assessln <- pp_assess(mcmc,data$Zb,200,1)
+assessln2 <- pp_assess(mcmc2,data$Zb,200,2)
+assessln3 <- pp_assess(mcmc3,data$Zb,200,3)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -171,7 +170,7 @@ y2q35 <- quantile(c(data$y2),probs=c(0.35))
 y2q90 <- quantile(c(data$y2),probs=c(0.9))
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln$out
+assess=assessln3$out
 q1 <- qplot(x=assess$y1zeroboth) + geom_vline(xintercept=y1zeroboth,colour="red") + theme_bw()
 q2 <- qplot(x=assess$y1zeroeither) + geom_vline(xintercept=y1zeroeither,colour="red") + theme_bw()
 q2b <- qplot(x=assess$y1ones) + geom_vline(xintercept=y1ones,colour="red") + theme_bw()
