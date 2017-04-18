@@ -57,15 +57,14 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim, ymodel){
   p2 <- rep(0,nsim)
   
   for(i in 1:nsim){
-    bcovmat <- matrix(c(sigmab[i,1]^2,sigmab[i,1]*sigmab[i,2]*corrb[i],sigmab[i,1]*sigmab[i,2]*corrb[i],sigmab[i,2]^2),ncol=2,byrow=T)
-    b <- mvrnorm(n,c(0,0),bcovmat)
-    #mux1 <- as.numeric(exp(Zb%*%gamma[i,]))
-    #x1 <- rgamma(n,eta[i],eta[i]/mux1)
-    x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
-    #x1 <- rlnorm(n,mux1,sqrt(sigma2y))
-    
-    #p <- 1-dgenpois(rep(0,n),x1,lambda[i],FALSE)
-    p <- 1-dgenpois(rep(0,n),x1,lambda[i]+b[,2],FALSE)
+    #bcovmat <- matrix(c(sigmab[i,1]^2,sigmab[i,1]*sigmab[i,2]*corrb[i],sigmab[i,1]*sigmab[i,2]*corrb[i],sigmab[i,2]^2),ncol=2,byrow=T)
+    #b <- mvrnorm(n,c(0,0),bcovmat)
+    mux1 <- exp(as.numeric((Zb%*%gamma[i,])))
+    x1 <- rgamma(n,eta[i],eta[i]/mux1)
+    #x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+
+    p <- 1-dgenpois(rep(0,n),x1,lambda[i],FALSE)
+    #p <- 1-dgenpois(rep(0,n),x1,lambda[i]+b[,2],FALSE)
     
     #mux2 <- exp(Zb%*%betax[i,-(nb+1)] + betax[i,nb+1]*x1)
     #x2 <- rgamma(n,theta[i],theta[i]/mux2)
@@ -78,8 +77,8 @@ pp_assess <- function(mcmcout,Zb,weekenddiff,nsim, ymodel){
     y1 <- matrix(0,ncol=2,nrow=n)
     
     for(j in 1:n){
-      y1[j,] <- rgenpois(2,x1[j],lambda[i]+b[j,2])
-      #y1[j,] <- rgenpois(200,x1[j],lambda[i])
+      #y1[j,] <- rgenpois(2,x1[j],lambda[i]+b[j,2])
+      y1[j,] <- rgenpois(2,x1[j],lambda[i])
     }
     
     #muy <- rowMeans(exp(as.numeric(Zb%*%(betay[i,1:ncol(Zb)]))+log(y1)*betay[i,ncol(Zb)+1]))

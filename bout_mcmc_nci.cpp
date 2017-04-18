@@ -816,8 +816,43 @@ arma::mat sample_b(arma::vec x1, arma::vec x2, double eta, double theta,
   return out;
 }
 
+double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec x1,
+                    arma::vec mux1, double lambda,double eta, double sigma2y,
+                    arma::vec betay, arma::mat yZ1, arma::mat yZ2){
+  int n = y1.n_rows;
+  int k = y1.n_cols;
+  int p = yZ1.n_cols;
+  double ll = 0.0;
+  double out;
+  double prob;
+  arma::vec muy1(2);
+  
+  for(int i=0;i<n;i++){
+    muy1 = arma::zeros(2);
+    for(int p1=0;p1<p;p1++){
+      muy1[0] += yZ1(i,p1)*betay[p1];
+      muy1[1] += yZ2(i,p1)*betay[p1];
+    }
+
+    prob = 1-dgenpois(0,x1[i],lambda,false);
+    for(int j=0;j<k;j++){
+      ll += dgenpois(y1(i,j),x1[i],lambda);
+      if(y2(i,j)==0){
+        ll += log(1-prob);
+      }
+      else{
+        ll += log(prob) + R::dlnorm(y2(i,j),muy1[j],sqrt(sigma2y),true);
+      }
+    }
+    ll += R::dgamma(x1[i],eta,1.0/(eta/mux1[i]),true);
+  }
+  out = ll / (n*k);
+  return out;
+}
+
+
 // [[Rcpp::export]]
-List mcmc_2part_1(List data, 
+List mcmc_2part_nci1(List data, 
                 List init, 
                 List priors, 
                 const int nreps, 
@@ -938,8 +973,11 @@ List mcmc_2part_1(List data,
   arma::mat b1(nreps,n);
   arma::mat b2(nreps,n);
   //arma::mat b3(nreps,n);
-  arma::mat sigmab(nreps,nbre);
+  arma::mat sigma2b(nreps,nbre);
   arma::vec corrb(nreps);
+  arma::vec ind_dic(nreps-burn);
+  double mean_dic;
+  double dic;
 
   
   //std::cout << "5\n";
@@ -1003,7 +1041,7 @@ List mcmc_2part_1(List data,
     //std::cout << "6a\n";
     //currentdelta = sample_delta(a0delta,b0delta,currentdelta,y2,currentx2,propd1,propd2);
     currentbetay = sample_beta_2(x1x2p,mu0y2,V0y2,currentsigma2y,y2sub);
-    //currentlmuy = calc_lmu(x1x2y1,currentbetay,arma::zeros(n));
+    currentlmuy = calc_lmu(x1x2y1,currentbetay,arma::zeros(n));
 
     //std::cout << "6b\n";
     
@@ -1084,14 +1122,24 @@ List mcmc_2part_1(List data,
     pg0.row(i) = currentp.t();
     b1.row(i) = currentb.col(0).t();
     b2.row(i) = currentb.col(1).t();
-    sigmab.row(i) = sqrt(currentSigmab.diag()).t();
+    sigma2b.row(i) = (currentSigmab.diag()).t();
     corrb[i] = currentSigmab(0,1)/(sqrt(currentSigmab(0,0)*currentSigmab(1,1)));
-
+    
+    if(i >= burn){
+      ind_dic[i-burn] = calc_ind_dic(y1,y2,currentx1,exp(currentlmux1),currentlambda,
+                                     currenteta,currentsigma2y,currentbetay,x1x2y1,x1x2y2);
+    }
     
     if(i % 1000==0){
       std::cout << "i= " << i << "\n";
     }
   } 
+  
+  mean_dic = calc_ind_dic(y1,y2,trans(mean(latentx1,0)),trans(mean(mux1,0)),mean(lambda),
+                                mean(eta),mean(sigma2y),trans(mean(betay,0)),x1x2y1,x1x2y2);
+  
+  dic = -4*mean(ind_dic) + 2*mean_dic;
+  
   return List::create(
     Named("betay") = betay,
     Named("betax") = betax,
@@ -1107,11 +1155,12 @@ List mcmc_2part_1(List data,
     Named("latentx2") = latentx2,
     Named("b1") = b1,
     Named("b2") = b2,
-    Named("sigmab") = sigmab,
+    Named("sigma2b") = sigma2b,
     Named("corrb") = corrb,
     Named("muy") = muy,
     Named("mux1") = mux1,
-    Named("mux2") = mux2);
+    Named("mux2") = mux2,
+    Named("dic") = dic);
 } 
 
 
