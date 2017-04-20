@@ -53,7 +53,9 @@ init = list(currentbetay=rep(0,ncol(data$Za)+1),currentbetax=c(6.4,-.006,0.57,-.
             currentdelta=1,propd1=1,propd2=1,alphatune=rep(0.0000001,ncol(data$Zb)),
             currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
             currentSigmab=diag(2)*0.00000001,currentzeta=sample(1:ncomp,nrow(data$y1),TRUE),
-            currentpi=rep(1/ncomp,ncomp),currentm=apply(y1,1,max)+2)
+            currentpi=rep(1/ncomp,ncomp),currentm=apply(y1,1,max)+2,
+            currentsigma2b=0.0001,currentb2=matrix(0,nrow=nrow(data$y1),ncol=3),
+            btune2=rep(0.001,3),currentSigmab2=diag(3)*0.01,currentb3=rep(0,nrow(data$y1)))
 
 prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
@@ -61,16 +63,18 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
              a0x=1,b0x=1,a0y=1,b0y=1,
              a0theta=1,b0theta=1,
              a0l=1,b0l=1,
-             a0delta=1,b0delta=1, d0=3, D0=diag(2),adirich=rep(1,ncomp))
+             a0delta=1,b0delta=1, d0=4, D0=diag(2),adirich=rep(1,ncomp),
+             D02=diag(3))
 
 mcmc = mcmc_2part_nci1(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 mcmc2 = mcmc_2part_nci2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc4 = mcmc_2part_nci4(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
-# mcmc = mcmc_2part_1(data=data,init=init,priors=prior,nrep=20000,burn=10000)
-# mcmc2 = mcmc_2part_lnln(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-# mcmc3 = mcmc_2part_lng(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-# mcmc4 = mcmc_2part_gln(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc2b = mcmc_2part_nci2b(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc2c = mcmc_2part_nci2c(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc2d = mcmc_2part_nci2d(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
@@ -131,7 +135,10 @@ plot(mcmc$betay[,9],type="l")
 
 plot(mcmc$sigma2b[,1],type="l")
 plot(mcmc$sigma2b[,2],type="l")
-plot(mcmc$corrb,type="l")
+plot(mcmc$sigma2b[,3],type="l")
+plot(mcmc$corrb[,1],type="l")
+plot(mcmc$corrb[,2],type="l")
+plot(mcmc$corrb[,3],type="l")
 
 plot(mcmc$sigma2y,type="l")
 
@@ -148,8 +155,12 @@ i=160;plot(mcmc$latentx1[,i]);y1[i,];summary(mcmc$latentx1[,i])
 #-------------------------------------------------------------
 
 assessln <- pp_assess(mcmc,data$Zb,200,1)
-assessln2 <- pp_assess(mcmc2,data$Zb,200,2)
+assessln2 <- pp_assess(mcmc2,data$Zb,200,2,burn=2000)
 assessln3 <- pp_assess(mcmc3,data$Zb,200,3)
+assessln4 <- pp_assess(mcmc4,data$Zb,200,4)
+assessln2b <- pp_assess(mcmc2b,data$Zb,200,"2b")
+assessln2c <- pp_assess(mcmc2c,data$Zb,200,"2c")
+assessln2d <- pp_assess(mcmc2d,data$Zb,200,"2d")
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -170,7 +181,7 @@ y2q35 <- quantile(c(data$y2),probs=c(0.35))
 y2q90 <- quantile(c(data$y2),probs=c(0.9))
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln3$out
+assess=assessln2d$out
 q1 <- qplot(x=assess$y1zeroboth) + geom_vline(xintercept=y1zeroboth,colour="red") + theme_bw()
 q2 <- qplot(x=assess$y1zeroeither) + geom_vline(xintercept=y1zeroeither,colour="red") + theme_bw()
 q2b <- qplot(x=assess$y1ones) + geom_vline(xintercept=y1ones,colour="red") + theme_bw()

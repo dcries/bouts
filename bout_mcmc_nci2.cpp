@@ -112,7 +112,7 @@ double dgenpois(double x, double mu, double lambda, bool logd=true, double m = s
     out = -1*std::numeric_limits<double>::infinity();
   }
   else if(lambda < 0){
-    if(m < 50){
+    if(m < 500){
       arma::vec probs(m+1);
       for(int i=0;i<m+1;i++){
         probs[i] = log(mu*(1-lambda)) + (i-1)*log(mu-lambda*(mu-i)) - (mu-lambda*(mu-i)) - lgamma(i+1);
