@@ -816,6 +816,7 @@ double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec mux1, arma::mat b,
   int p = yZ1.n_cols;
   int nb = b.n_cols;
   double ll = 0.0;
+  double ll2 = 0.0;
   double out;
   double prob;
   arma::vec muy1(k);
@@ -836,18 +837,18 @@ double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec mux1, arma::mat b,
     //prob=0.5;
     //std::cout << "e(muy1) " << exp(muy1) << "\n";
     for(int j=0;j<k;j++){
-      ll += dgenpois(y1(i,j),mux1[i],lambda,true);
+      ll2 += dgenpois(y1(i,j),mux1[i],lambda,true);
       //std::cout << "dgenpois = "  << dgenpois(y1(i,j),mux1[i],lambda+b(i,1),true,M[i]) << "\n";
       // std::cout << "ll after degenpois = " << ll << "\n";
       // std::cout << "mux1 = " << mux1[i] << "\n";
       // std::cout << "lambda + " << lambda+b(i,1) << "\n";
       if(y2(i,j)==0){
-        ll += log(1-prob);
+        ll2 += log(1-prob);
         //std::cout << "dlnorm = " << log(1-prob) << "\n";
         
       }
       else{
-        ll += log(prob) + R::dlnorm(y2(i,j),muy1[j],sqrt(sigma2y),true);
+        ll2 += log(prob) + R::dlnorm(y2(i,j),muy1[j],sqrt(sigma2y),true);
         //std::cout << "dlnorm = " << log(prob) + R::dlnorm(y2(i,j),muy1[j],sqrt(sigma2y),true) << "\n";
         
       } 
@@ -861,7 +862,7 @@ double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec mux1, arma::mat b,
     //std::cout << "ll after dmvnorm = " << ll << "\n";
     
   }
-  out = ll / (n*k);
+  out = (ll2/k+ll) / n;
   return out;
 }
 
@@ -1151,12 +1152,12 @@ List mcmc_2part_nci2c(List data,
     }
   } 
   
-  meanSigmab.diag() = (mean(sigma2b,0));
-  meanSigmab(0,1)=meanSigmab(1,0)=mean(corrb)*sqrt(meanSigmab(0,0)*meanSigmab(1,1));
+  meanSigmab.diag() = (mean(sigma2b.rows(burn,nreps-1),0));
+  meanSigmab(0,1)=meanSigmab(1,0)=mean(corrb.subvec(burn,nreps-1))*sqrt(meanSigmab(0,0)*meanSigmab(1,1));
 
-  mean_dic = calc_ind_dic(y1,y2,trans(mean(mux1,0)),
-                          arma::join_rows(trans(mean(b1,0)),trans(mean(b2,0))),
-                          mean(lambda),mean(sigma2y),trans(mean(betay,0)),meanSigmab,x1x2y1,x1x2y2);
+  mean_dic = calc_ind_dic(y1,y2,trans(mean(mux1.rows(burn,nreps-1),0)),
+                          arma::join_rows(trans(mean(b1.rows(burn,nreps-1),0)),trans(mean(b2.rows(burn,nreps-1),0))),
+                          mean(lambda.subvec(burn,nreps-1)),mean(sigma2y.subvec(burn,nreps-1)),trans(mean(betay.rows(burn,nreps-1),0)),meanSigmab,x1x2y1,x1x2y2);
   
   dic = -4*mean(ind_dic) + 2*mean_dic;
   //dic = 2*mean_dic;

@@ -384,13 +384,63 @@ double sample_eta(double ae, double be, double currenteta, arma::vec x1, arma::v
 
 
 //// [[Rcpp::export]]
+// double log_qx1(double x1, arma::rowvec y1, arma::rowvec y2, double mux1, 
+//                arma::vec muy2, double eta, double lambda, double sigma2y, double p){
+//   double ll2=0.0;
+//   double ll4=0.0;
+//   
+//   int k = y1.size();
+// 
+//   ll2 = R::dgamma(x1,eta,1.0/(eta/mux1),true);
+//   
+//   for(int i=0;i<k;i++){
+//     ll4 += dgenpois(y1[i],x1,lambda);
+//     if(y2[i]==0){
+//       ll4 += log(1-p);
+//     }
+//     else{
+//       ll4 += log(p) + R::dlnorm(y2[i],muy2[i],sqrt(sigma2y),true);
+//     }
+//   }
+//   
+//   return ll2+ll4;
+// }
+// 
+// //// [[Rcpp::export]]
+// arma::vec sample_x1(arma::vec x1, arma::mat y1, arma::mat y2, arma::vec mux1, arma::mat muy2,
+//                     double eta,arma::vec x1propa, arma::vec x1propb, double lambda, double sigma2y, arma::vec p){
+//   int n = x1.size();
+//   arma::vec out = x1; 
+//   
+//   
+//   double propx;
+//   double lacceptprob;
+//   double propp;
+//   
+//   for(int i=0;i<n;i++){
+//     //propx = R::rexp(x1tune[i]);
+//     propx = R::rgamma(x1propa[i],1/x1propb[i]);
+//     propp = calc_p(propx,lambda);
+//     
+//     lacceptprob = log_qx1(propx,y1.row(i),y2.row(i),mux1[i],muy2.row(i).t(),eta,lambda,sigma2y,propp) - 
+//       log_qx1(x1[i],y1.row(i),y2.row(i),mux1[i],muy2.row(i).t(),eta,lambda,sigma2y,p[i]) -
+//       //R::dexp(propx,x1tune[i],true) + R::dexp(x1[i],x1tune[i],true);
+//       R::dgamma(propx,x1propa[i],1/x1propb[i],true) + R::dgamma(x1[i],x1propa[i],1/x1propb[i],true);
+//     
+//     if(log(R::runif(0,1))<lacceptprob){
+//       out[i]=propx;
+//     }
+//   }
+//   return out;
+// }
+
 double log_qx1(double x1, arma::rowvec y1, 
                double mux1, double eta, double lambda){
   double ll2=0.0;
   double ll4=0.0;
   
   int k = y1.size();
-
+  
   ll2 = R::dgamma(x1,eta,1.0/(eta/mux1),true);
   
   for(int i=0;i<k;i++){
@@ -509,6 +559,49 @@ double sample_delta(double ad, double bd, double currentdelta, arma::mat y2, arm
 
 
 
+
+// //// [[Rcpp::export]]
+// double log_ql(arma::mat y1, arma::mat y2, arma::vec x1, double lambda, 
+//               double sigma2y, arma::mat muy2, arma::vec p, double a0l, double b0l){
+//   double out = 0.0;
+//   int k = y1.n_cols;
+//   int n = y1.n_rows;
+//   for(int i=0;i<n;i++){
+//     for(int j=0;j<k;j++){
+//       out += dgenpois(y1(i,j),x1[i],lambda);
+//       
+//       if(y2(i,j)==0){
+//         out += log(1-p[i]);
+//       }
+//       else{
+//         out += log(p[i]) + R::dlnorm(y2(i,j),muy2(i,j),sqrt(sigma2y),true);
+//       }
+//     }
+//   }
+//   out += (a0l-1)*log(lambda) + (1-b0l)*log(1-lambda);
+//   return out;
+// }
+// 
+// //// [[Rcpp::export]]
+// double sample_lambda(arma::mat y1,arma::mat y2, arma::vec x1, arma::mat muy2,
+//                      double lambda, double sigma2y, arma::vec p, double a0l, double b0l,
+//                      double propl1, double propl2){
+//   int n = y1.n_rows;
+//   double out = lambda;
+//   double proposal = R::rbeta(propl1,propl2);
+//   double lacceptprob;
+//   arma::vec propp(n);
+//   
+//   propp = calc_p(x1,proposal);
+//   
+//   lacceptprob = log_ql(y1,y2,x1,proposal,sigma2y,muy2,propp,a0l,b0l) - log_ql(y1,y2,x1,lambda,sigma2y,muy2,p,a0l,b0l) -
+//     R::dbeta(proposal,propl1,propl2,true) + R::dbeta(lambda,propl1,propl2,true);
+//   
+//   if(log(R::runif(0,1))<lacceptprob){
+//     out = proposal;
+//   }
+//   return out;
+// }
 
 //// [[Rcpp::export]]
 double log_ql(arma::mat y1, arma::vec x1, double lambda, double a0l, double b0l){
@@ -689,6 +782,7 @@ double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec x1,
   int k = y1.n_cols;
   int p = yZ1.n_cols;
   double ll = 0.0;
+  double ll2 = 0.0;
   double out;
   double prob;
   arma::vec muy1(2);
@@ -702,17 +796,17 @@ double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec x1,
 
     prob = 1-dgenpois(0,x1[i],lambda,false);
     for(int j=0;j<k;j++){
-      ll += dgenpois(y1(i,j),x1[i],lambda);
+      ll2 += dgenpois(y1(i,j),x1[i],lambda);
       if(y2(i,j)==0){
-        ll += log(1-prob);
+        ll2 += log(1-prob);
       }
       else{
-        ll += log(prob) + R::dlnorm(y2(i,j),muy1[j],sqrt(sigma2y),true);
+        ll2 += log(prob) + R::dlnorm(y2(i,j),muy1[j],sqrt(sigma2y),true);
       }
     }
     ll += R::dgamma(x1[i],eta,1.0/(eta/mux1[i]),true);
   }
-  out = ll / (n*k);
+  out = (ll2/k + ll) / n;
   return out;
 }
 
@@ -907,7 +1001,8 @@ List mcmc_2part_nci1(List data,
     //std::cout << "6a\n";
     currentbetay = sample_beta_2(x1x2p,mu0y2,V0y2,currentsigma2y,y2sub);
     currentlmuy = calc_lmu(x1x2y1,currentbetay,arma::zeros(n));
-
+    currentlmuy2 = calc_lmu(x1x2y2,currentbetay,arma::zeros(n));
+    
     //std::cout << "6b\n";
     
     //std::cout << "6c\n";
@@ -915,8 +1010,10 @@ List mcmc_2part_nci1(List data,
     currentgamma = sample_gamma(mu0x1,V0x1,currenteta,exp(currentlmux1),currentx1,Za,currentgamma,gamma_var,currentb.col(0));
     
     currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
-    
     currentlambda = sample_lambda(y1,currentx1,currentlambda,a0l,b0l,propl1,propl2);
+    // currentlambda = sample_lambda(y1,y2,currentx1,arma::join_rows(currentlmuy,currentlmuy2),
+    //                               currentlambda,currentsigma2y,currentp,a0l,b0l,propl1,propl2); 
+    
     currentp = calc_p(currentx1,currentlambda);
     
     //currentSigmab = sample_Sigmab(d0,D0,currentb);
@@ -959,6 +1056,9 @@ List mcmc_2part_nci1(List data,
     
     ////std::cout << "8\n";
     
+    // currentx1 = sample_x1(currentx1,y1,y2,exp(currentlmux1),
+    //                       arma::join_rows(currentlmuy,currentlmuy2),currenteta,
+    //                       x1propa,x1propb,currentlambda,currentsigma2y,currentp);
     currentx1 = sample_x1(currentx1,y1,exp(currentlmux1),currenteta,
                           x1propa,x1propb,currentlambda);
     
@@ -998,8 +1098,8 @@ List mcmc_2part_nci1(List data,
     }
   } 
   
-  mean_dic = calc_ind_dic(y1,y2,trans(mean(latentx1,0)),trans(mean(mux1,0)),mean(lambda),
-                                mean(eta),mean(sigma2y),trans(mean(betay,0)),x1x2y1,x1x2y2);
+  mean_dic = calc_ind_dic(y1,y2,trans(mean(latentx1.rows(burn,nreps-1),0)),trans(mean(mux1.rows(burn,nreps-1),0)),mean(lambda.subvec(burn,nreps-1)),
+                                mean(eta.subvec(burn,nreps-1)),mean(sigma2y.subvec(burn,nreps-1)),trans(mean(betay.rows(burn,nreps-1),0)),x1x2y1,x1x2y2);
   
   dic = -4*mean(ind_dic) + 2*mean_dic;
   

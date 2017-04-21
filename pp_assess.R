@@ -66,7 +66,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,burn=1){
       for(j in 1:n){
         #y1[j,] <- rgenpois(2,x1[j],lambda[i]+b[j,2])
         y1[j,] <- rgenpois(2,x1[j],lambda[i])
-        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE,Inf)
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
         
       }
       muy1 <- Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,1])*betay[i,ncol(Zb)+1]
