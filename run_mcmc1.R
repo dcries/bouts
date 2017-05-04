@@ -12,6 +12,7 @@ source('~/Documents/github/bouts/rgenpois.R')
 setwd("C:\\Users\\dcries\\github\\bouts\\data")
 setwd("~/Documents/github/bouts/data/")
 bouts <- read.csv("finalbouts2rep.csv")
+pams <- read.csv("FinalPAMSDataSetNew.csv")
 
 #Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% select(age,gender,bmi,smoke,education,black,hispanic)
 Za <- bouts %>% group_by(id) %>% filter(rep==1)
@@ -44,7 +45,7 @@ data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
 init = list(currentbetay=rep(0,ncol(data$Za)+1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0,0,0,0.48),currentalpha=rep(0,ncol(data$Zb)),
             currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
-            currentu=rep(0,nrow(data$y1)),gammatune=rep(0.00001,ncol(Za)),
+            currentu=rep(0,nrow(data$y1)),gammatune=rep(0.000001,ncol(Za)),
             propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
             x1propa=x1propa,x1propb=x1propb,
             currenttheta=rep(1,1),betaxtune=rep(0.0001,ncol(Za)+1), 
@@ -54,7 +55,7 @@ init = list(currentbetay=rep(0,ncol(data$Za)+1),currentbetax=c(6.4,-.006,0.57,-.
             currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
             currentSigmab=diag(2)*0.00000001,currentzeta=sample(1:ncomp,nrow(data$y1),TRUE),
             currentpi=rep(1/ncomp,ncomp),currentm=apply(y1,1,max)+2,
-            currentsigma2b=0.0001,currentb2=matrix(0,nrow=nrow(data$y1),ncol=3),
+            currentsigma2b=0.01,currentb2=matrix(0,nrow=nrow(data$y1),ncol=3),
             btune2=rep(0.001,3),currentSigmab2=diag(3)*0.01,currentb3=rep(0,nrow(data$y1)))
 
 prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
@@ -66,19 +67,23 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
              a0delta=1,b0delta=1, d0=4, D0=diag(2),adirich=rep(1,ncomp),
              D02=diag(3))
 
-mcmc = mcmc_2part_nci1(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-mcmc2 = mcmc_2part_nci2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-mcmc4 = mcmc_2part_nci4(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc1 = mcmc_2part_nci1(data=data,init=init,priors=prior,nrep=25000,burn=10000)
+#mcmc2 = mcmc_2part_nci2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+# mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+# mcmc4 = mcmc_2part_nci4(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
-mcmc2b = mcmc_2part_nci2b(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc2b = mcmc_2part_nci2b(data=data,init=init,priors=prior,nrep=25000,burn=10000)
 mcmc2c = mcmc_2part_nci2c(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 mcmc2d = mcmc_2part_nci2d(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
+mcmc2c2 = mcmc_2part_nci2c2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc2c3 = mcmc_2part_nci2c3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+
+mcmc5 = mcmc_2part_nci5(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
-#apply(mcmc$betax,2,function(x){return(length(unique(x))/length(x))}) 
+apply(mcmc$betay,2,function(x){return(length(unique(x))/length(x))}) 
 #apply(mcmc$alpha,2,function(x){return(length(unique(x))/length(x))}) 
 plot(apply(mcmc$latentx1,2,function(x){return((length(unique(x))-1)/length(x))}))
 #plot(apply(mcmc$latentx2,2,function(x){return((length(unique(x))-1)/length(x))}))
@@ -86,7 +91,7 @@ plot(apply(mcmc$b1,2,function(x){return((length(unique(x))-1)/length(x))}))
 (length(unique(mcmc$eta))-1)/length(mcmc$eta)
 #(length(unique(mcmc$theta))-1)/length(mcmc$theta)
 (length(unique(mcmc$lambda))-1)/length(mcmc$lambda)
-#(length(unique(mcmc$delta))-1)/length(mcmc$delta)
+(length(unique(mcmc$delta))-1)/length(mcmc$delta)
 
 
 hist(colMeans(mcmc$latentx1))
@@ -154,13 +159,18 @@ i=160;plot(mcmc$latentx1[,i]);y1[i,];summary(mcmc$latentx1[,i])
 
 #-------------------------------------------------------------
 
-assessln <- pp_assess(mcmc,data$Zb,200,1)
-assessln2 <- pp_assess(mcmc2,data$Zb,200,2,burn=2000)
-assessln3 <- pp_assess(mcmc3,data$Zb,200,3)
-assessln4 <- pp_assess(mcmc4,data$Zb,200,4)
-assessln2b <- pp_assess(mcmc2b,data$Zb,200,"2b")
-assessln2c <- pp_assess(mcmc2c,data$Zb,200,"2c")
-assessln2d <- pp_assess(mcmc2d,data$Zb,200,"2d")
+assessln <- pp_assess(mcmc1,data$Zb,1000,1,burn=10000)
+# assessln2 <- pp_assess(mcmc2,data$Zb,200,2,burn=2000)
+# assessln3 <- pp_assess(mcmc3,data$Zb,200,3)
+# assessln4 <- pp_assess(mcmc4,data$Zb,200,4)
+assessln2b <- pp_assess(mcmc2b,data$Zb,1000,"2b",burn=10000)
+assessln2c <- pp_assess(mcmc2c,data$Zb,400,"2c",y1,y2,burn=2000)
+assessln2d <- pp_assess(mcmc2d,data$Zb,400,"2d",burn=2000)
+
+assessln2c2 <- pp_assess(mcmc2c2,data$Zb,400,"2c2",y1,y2,burn=2000)
+assessln2c3 <- pp_assess(mcmc2c3,data$Zb,400,"2c3",y1,y2,burn=2000)
+
+assessln5 <- pp_assess(mcmc5,data$Zb,400,"5",y1,y2,burn=2000)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -179,6 +189,11 @@ y2q15 <- quantile(c(data$y2),probs=c(0.20))
 y2q25 <- quantile(c(data$y2),probs=c(0.25))
 y2q35 <- quantile(c(data$y2),probs=c(0.35))
 y2q90 <- quantile(c(data$y2),probs=c(0.9))
+y2q95 <- quantile(c(data$y2),probs=c(0.95))
+y2q30 <- quantile(c(data$y2),probs=c(0.3))
+y110 <- sum(apply(y1,1,function(x){return(x[1]>=1 & x[2]==0)}))
+y101 <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=1)}))
+
 y2daydiff <- mean(y2[,1]-y2[,2])
 
 assess=assessln2d$out
@@ -195,11 +210,12 @@ q7b <- qplot(x=assess$y1y2cor) + geom_vline(xintercept=y1y2cor,colour="red") + t
 q8 <- qplot(x=assess$y2median) + geom_vline(xintercept=y2median,colour="red") + theme_bw()
 q9a <- qplot(x=assess$y2q15) + geom_vline(xintercept=y2q15,colour="red") + theme_bw()
 q9b <- qplot(x=assess$y2q25) + geom_vline(xintercept=y2q25,colour="red") + theme_bw()
+q9b2 <- qplot(x=assess$y2q30) + geom_vline(xintercept=y2q30,colour="red") + theme_bw()
 q9c <- qplot(x=assess$y2q35) + geom_vline(xintercept=y2q35,colour="red") + theme_bw()
 q10 <- qplot(x=assess$y2q90) + geom_vline(xintercept=y2q90,colour="red") + theme_bw()
-q11 <- qplot(x=assess$y2daydiff) + geom_vline(xintercept=y2daydiff,colour="red") + theme_bw()
+q11 <- qplot(x=assess$y2q95) + geom_vline(xintercept=y2q95,colour="red") + theme_bw()
 
-grid.arrange(q1,q2,q2b,q2c,q3,q4,q6,q7b,q8,q9a,q9b,q9c,q10,q11)
+grid.arrange(q1,q2,q2b,q2c,q3,q4,q6,q7b,q8,q9a,q9b,q9b2,q9c,q10,q11)
 
 sum(assess$y1zeroboth > y1zeroboth)/nrow(assess)
 sum(assess$y1zeroeither > y1zeroeither)/nrow(assess)
