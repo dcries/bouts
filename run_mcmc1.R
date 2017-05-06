@@ -56,7 +56,8 @@ init = list(currentbetay=rep(0,ncol(data$Za)+1),currentbetax=c(6.4,-.006,0.57,-.
             currentSigmab=diag(2)*0.00000001,currentzeta=sample(1:ncomp,nrow(data$y1),TRUE),
             currentpi=rep(1/ncomp,ncomp),currentm=apply(y1,1,max)+2,
             currentsigma2b=0.01,currentb2=matrix(0,nrow=nrow(data$y1),ncol=3),
-            btune2=rep(0.001,3),currentSigmab2=diag(3)*0.01,currentb3=rep(0,nrow(data$y1)))
+            btune2=rep(0.001,3),currentSigmab2=diag(3)*0.01,currentb3=rep(0,nrow(data$y1)),
+            currentphi=.89)
 
 prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
@@ -69,7 +70,7 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
 
 mcmc1 = mcmc_2part_nci1(data=data,init=init,priors=prior,nrep=25000,burn=10000)
 #mcmc2 = mcmc_2part_nci2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-# mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+ mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 # mcmc4 = mcmc_2part_nci4(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 mcmc2b = mcmc_2part_nci2b(data=data,init=init,priors=prior,nrep=25000,burn=10000)
@@ -80,6 +81,7 @@ mcmc2c2 = mcmc_2part_nci2c2(data=data,init=init,priors=prior,nrep=6000,burn=2000
 mcmc2c3 = mcmc_2part_nci2c3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 mcmc5 = mcmc_2part_nci5(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc6 = mcmc_2part_nci6(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
@@ -92,6 +94,7 @@ plot(apply(mcmc$b1,2,function(x){return((length(unique(x))-1)/length(x))}))
 #(length(unique(mcmc$theta))-1)/length(mcmc$theta)
 (length(unique(mcmc$lambda))-1)/length(mcmc$lambda)
 (length(unique(mcmc$delta))-1)/length(mcmc$delta)
+(length(unique(mcmc$phi))-1)/length(mcmc$phi)
 
 
 hist(colMeans(mcmc$latentx1))
@@ -113,6 +116,7 @@ plot(mcmc$eta,type="l")
 #plot(mcmc$theta,type="l")
 plot(mcmc$lambda,type="l")
 #plot(mcmc$delta,type="l")
+plot(mcmc$phi,type="l")
 
 
 plot(mcmc$betay[,1],type="l")
@@ -161,16 +165,17 @@ i=160;plot(mcmc$latentx1[,i]);y1[i,];summary(mcmc$latentx1[,i])
 
 assessln <- pp_assess(mcmc1,data$Zb,1000,1,burn=10000)
 # assessln2 <- pp_assess(mcmc2,data$Zb,200,2,burn=2000)
-# assessln3 <- pp_assess(mcmc3,data$Zb,200,3)
+ assessln3 <- pp_assess(mcmc3,data$Zb,400,3,y1,y2,burn=2000)
 # assessln4 <- pp_assess(mcmc4,data$Zb,200,4)
 assessln2b <- pp_assess(mcmc2b,data$Zb,1000,"2b",burn=10000)
 assessln2c <- pp_assess(mcmc2c,data$Zb,400,"2c",y1,y2,burn=2000)
-assessln2d <- pp_assess(mcmc2d,data$Zb,400,"2d",burn=2000)
+assessln2d <- pp_assess(mcmc2d,data$Zb,400,"2d",y1,y2,burn=2000)
 
 assessln2c2 <- pp_assess(mcmc2c2,data$Zb,400,"2c2",y1,y2,burn=2000)
 assessln2c3 <- pp_assess(mcmc2c3,data$Zb,400,"2c3",y1,y2,burn=2000)
 
 assessln5 <- pp_assess(mcmc5,data$Zb,400,"5",y1,y2,burn=2000)
+assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=2000)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -184,19 +189,36 @@ y2zeroeither <- sum(apply(y2,1,function(x){return(!0%in%x)}))
 y2greaterthan <- sum(y1[,1]*30+y2[,1]>450/7)
 y1y2regcoef <- coef(lm((y2[,1]-y2[,2])~I(y1[,1]-y1[,2])+weekenddiff$diff))[2]
 y1y2cor <- cor(c(y1[y1>0]),c(y2[y2>0]))
-y2median <- median(c(data$y2))
-y2q15 <- quantile(c(data$y2),probs=c(0.20))
-y2q25 <- quantile(c(data$y2),probs=c(0.25))
-y2q35 <- quantile(c(data$y2),probs=c(0.35))
-y2q90 <- quantile(c(data$y2),probs=c(0.9))
-y2q95 <- quantile(c(data$y2),probs=c(0.95))
-y2q30 <- quantile(c(data$y2),probs=c(0.3))
-y110 <- sum(apply(y1,1,function(x){return(x[1]>=1 & x[2]==0)}))
-y101 <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=1)}))
+y2median <- median(c(y2[y2>0]))
+y2mean <- mean(c(y2[y2>0]))
+y2var <- var(c(y2[y2>0]))
+y2q15 <- quantile(c(y2[y2>0]),probs=c(0.20))
+y2q25 <- quantile(c(y2[y2>0]),probs=c(0.25))
+y2q35 <- quantile(c(y2[y2>0]),probs=c(0.35))
+y2q90 <- quantile(c(y2[y2>0]),probs=c(0.9))
+y2q95 <- quantile(c(y2[y2>0]),probs=c(0.95))
+y2q30 <- quantile(c(y2[y2>0]),probs=c(0.3))
+
+y100 <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+y110 <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+y101 <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+y120 <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+y102 <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+y112 <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+y121 <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+y111 <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+y122 <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+
+probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y101,y102,y111,y112,y121,y122))
+
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln2d$out
+assess=assessln6$out
+obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
+         median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
+         median(assess$y122))
+chisq.test(obs,p=probs)
 q1 <- qplot(x=assess$y1zeroboth) + geom_vline(xintercept=y1zeroboth,colour="red") + theme_bw()
 q2 <- qplot(x=assess$y1zeroeither) + geom_vline(xintercept=y1zeroeither,colour="red") + theme_bw()
 q2b <- qplot(x=assess$y1ones) + geom_vline(xintercept=y1ones,colour="red") + theme_bw()
@@ -214,8 +236,10 @@ q9b2 <- qplot(x=assess$y2q30) + geom_vline(xintercept=y2q30,colour="red") + them
 q9c <- qplot(x=assess$y2q35) + geom_vline(xintercept=y2q35,colour="red") + theme_bw()
 q10 <- qplot(x=assess$y2q90) + geom_vline(xintercept=y2q90,colour="red") + theme_bw()
 q11 <- qplot(x=assess$y2q95) + geom_vline(xintercept=y2q95,colour="red") + theme_bw()
+q12 <- qplot(x=assess$y2mean) + geom_vline(xintercept=y2mean,colour="red") + theme_bw()
+q13 <- qplot(x=assess$y2var) + geom_vline(xintercept=y2var,colour="red") + theme_bw()
 
-grid.arrange(q1,q2,q2b,q2c,q3,q4,q6,q7b,q8,q9a,q9b,q9b2,q9c,q10,q11)
+grid.arrange(q1,q2,q2b,q2c,q3,q4,q6,q7b,q8,q9a,q9b,q9c,q10,q11,q12,q13)
 
 sum(assess$y1zeroboth > y1zeroboth)/nrow(assess)
 sum(assess$y1zeroeither > y1zeroeither)/nrow(assess)

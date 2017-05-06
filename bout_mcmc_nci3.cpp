@@ -930,8 +930,8 @@ List mcmc_2part_nci3(List data,
   Zbx = arma::join_rows(Zb,log(currentx1));
   x1x2 = Zb;//arma::join_rows(intercept,arma::join_rows(currentx1,currentx2));
   
-  x1x2y1 = arma::join_rows(Za,sqrt(y1.col(0)));//x1x2;//arma::join_rows(intercept,currentx2);
-  x1x2y2 = arma::join_rows(Za,sqrt(y1.col(1)));//x1x2;//arma::join_rows(intercept,currentx2);
+  x1x2y1 = arma::join_rows(Za,log(y1.col(0)));//x1x2;//arma::join_rows(intercept,currentx2);
+  x1x2y2 = arma::join_rows(Za,log(y1.col(1)));//x1x2;//arma::join_rows(intercept,currentx2);
   x1x2y = arma::join_rows(Za,ybar1);
   x1x2p1 = subset2(x1x2y1,indy1);
   x1x2p2 = subset2(x1x2y2,indy2);
