@@ -34,14 +34,14 @@ x1propa <- y1rowmean^2/y1rowvar
 # muy 4.01,.06,.002
 #currentalpha=c(-.32,0.47,.001)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
-init = list(currentbetay=c(1,0,0,0,0,0,0,0,0),
-            currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
+init = list(currentbetay=c(1,-3,4,-5,7,1,-2,-8,-2),
+            currentgamma=c(-2.01,0.012,-0.578,0.018,0.011,0,0.5,-1),currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             gammatune=rep(0.00000001,ncol(Za)),propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
             x1propa=x1propa,x1propb=x1propb,betaxtune=c(1,rep(0.01,ncol(Za)-1),1), 
-            propax2=1,propbx2=0.5,currentlambda=.5,propl1=1,propl2=1,
+            propax2=1,propbx2=0.5,currentlambda=.1,propl1=1,propl2=1,
             propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
-            currentSigmab=diag(2)*.01, currentsigma2b=0.01,currentphi=.89)
+            currentSigmab=diag(2)*.01, currentsigma2b=0.01,currentphi=.39)
 
 prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
@@ -54,5 +54,5 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
 mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=100000,burn=20000)
 assessln <- pp_assess(mcmc,data$Zb,1000,"7",y1,y2,burn=20000)
 
-save(mcmc,file="boutsmcmc.RData")
-save(assessln,file="assessmcmc.RData")
+save(mcmc,file="boutsmcmc3.RData")
+save(assessln,file="assessmcmc3.RData")
