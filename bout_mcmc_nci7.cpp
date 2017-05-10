@@ -312,7 +312,6 @@ double log_qgamma(arma::vec cx, arma::mat vx, double lambda, arma::vec mu1,
   int n = y1.n_rows;
   int k = y1.n_cols;
   for(int i=0;i<n;i++){
-    
     for(int j=0;j<k;j++){
       out += dgenpois(y1(i,j),mu1[i],lambda,true);
       if(y2(i,j)==0){
