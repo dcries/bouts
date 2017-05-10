@@ -86,7 +86,8 @@ mcmc5b = mcmc_2part_nci5b(data=data,init=init,priors=prior,nrep=20000,burn=10000
 mcmc6 = mcmc_2part_nci6(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 mcmc7 = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=20000,burn=10000)
-mcmc7b = mcmc_2part_nci7b(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc7b = mcmc_2part_nci7b(data=data,init=init,priors=prior,nrep=20000,burn=10000)
+
 mcmc8 = mcmc_2part_nci8(data=data,init=init,priors=prior,nrep=100000,burn=50000)
 mcmc8b = mcmc_2part_nci8b(data=data,init=init,priors=prior,nrep=100000,burn=50000)
 
@@ -188,7 +189,7 @@ assessln5b <- pp_assess(mcmc5b,data$Zb,400,"5b",y1,y2,burn=10000)
 
 assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=10000)
 
-assessln7 <- pp_assess(mcmc7,data$Zb,2000,"7",y1,y2,burn=10000)
+assessln7 <- pp_assess(mcmc7,data$Zb,400,"7",y1,y2,burn=10000)
 assessln7b <- pp_assess(mcmc7b,data$Zb,2000,"7b",y1,y2,burn=50000)
 assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
 assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
