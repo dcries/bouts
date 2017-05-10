@@ -4,8 +4,8 @@ library(reshape)
 #library(gridExtra)
 
 Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci7.cpp')
-source('/home/dcries/github/bouts/pp_assess.R')
-source('/home/dcries/github/bouts/rgenpois.R')
+source('/home/dcries/bouts/pp_assess.R')
+source('/home/dcries/bouts/rgenpois.R')
 
 #setwd("C:\\Users\\dcries\\github\\bouts\\data")
 bouts <- read.csv("/home/dcries/bouts/data/finalbouts2rep.csv")
