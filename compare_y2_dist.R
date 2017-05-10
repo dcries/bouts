@@ -13,9 +13,17 @@ ll.gengamma<-function(dat,par){
   ll=-sum(dgengamma.orig(dat,a1,a2,a3,log=T))
   
 }
+Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
+names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
 y = y2[y2>0]
+y1p = y1[y1>0]
 library(survival)
 m1=survreg(Surv(y)~1)
+m2=survreg(Surv(y)~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z)
+m3=survreg(Surv(y)~log(y1p),data=Z)
+m4=glm(y~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z,family=Gamma(link="log"))
+m5=glm(y~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z,family=gaussian(link="log"))
+
 a = 1/m1$scale
 b = exp(coef(m1))
 #shape 1 scale 2
@@ -84,3 +92,38 @@ mdf <- rbind(mdf,real)
 mdf$value <- as.numeric(mdf$value)
 
 ggplot() + geom_density(data=mdf,aes(x=value,colour=variable)) + theme_bw() + xlim(c(0,2000)) + scale_colour_manual(values=c("red","blue","green","yellow","black"))
+
+
+#-----------------------------------
+#make power link function
+library(survival)
+library(rjags)
+Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
+names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
+y = y2[y2>0]
+y1p = y1[y1>0]
+
+m2=survreg(Surv(y)~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z)
+m3=survreg.old(Surv(y)~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z,link=power(lambda=1/2))
+
+m4=glm(y~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z,family=Gamma(link="log"))
+
+m6 <- glm(y~as.matrix(Z)+log(y1p)+0,family=Gamma(link=power(lambda=1/2)))
+
+
+
+model <- "model{
+for(i in 1:n){
+  mu[i] <- (inprod(Z[i,],beta[]))^2
+  #y[i] ~ dgamma(delta,delta/mu[i])
+  y[i] ~ dweibull(delta,mu[i])
+}
+for(i in 1:k){
+  beta[i] ~ dnorm(0.01,1/100)
+}
+delta ~ dgamma(1,1)
+}
+"
+dattp <- list(y=y,n=length(y),Z=cbind(as.matrix(Z),log(y1p)),k=ncol(Z)+1)
+mtp = jags.model(textConnection(model), dattp,n.adapt=1000,n.chains=3)
+rtp = coda.samples(mtp, c("delta","beta"), n.iter=1000)

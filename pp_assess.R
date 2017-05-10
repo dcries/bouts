@@ -852,8 +852,8 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
       #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
       b <- matrix(0,nrow=n,ncol=2)
-      b[,1] <- rnorm(n,0,sigma2b[i,1])
-      b[,2] <- rnorm(n,0,sigma2b[i,2])
+      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
       
       tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
@@ -919,6 +919,99 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
     }
   }
+  if(ymodel=="5b"){
+    gamma <- mcmcout$gamma[ind,]
+    betay <- mcmcout$betay[ind,]
+    alpha <- mcmcout$alpha[ind,]
+    sigma2y <- mcmcout$sigma2y[ind]
+    sigma2x <- mcmcout$sigma2x[ind]
+    
+    eta <- mcmcout$eta[ind]
+    theta <- mcmcout$theta[ind]
+    delta <- mcmcout$delta[ind]
+    lambda <- mcmcout$lambda[ind]
+    latentx1 <- mcmcout$latentx1[ind,]
+    latentx2 <- mcmcout$latentx2[ind,]
+    #mux1 <- mcmcout$mux1[ind,]
+    #muy <- mcmcout$muy[ind,]
+    sigma2b <- mcmcout$sigma2b[ind,]
+    corrb <- mcmcout$corrb[ind]
+    
+    #mux2 <- mcmcout$mux2[ind,]
+    
+    for(i in 1:nsim){
+      #corresponds to nci model with correlated re in mu and lambda (normal)
+      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      b <- matrix(0,nrow=n,ncol=2)
+      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      
+      tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
+      
+      
+      x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #print(summary(x1))
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + log(x1)*betay[i,ncol(Zb)+1] + b[,2]
+      x2 <- (muy+sigma2y[i]/2)^2
+      y1 <- matrix(0,ncol=2,nrow=n)
+      
+      for(j in 1:n){
+        y1[j,] <- rgenpois(2,x1[j],lambda[i])
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
+        
+      }
+      muy1 <- log((Zb%*%(betay[i,1:ncol(Zb)]) + log(y1[,1])*betay[i,ncol(Zb)+1]+ b[,2])^2)
+      muy2 <- log((Zb%*%(betay[i,1:ncol(Zb)]) + log(y1[,2])*betay[i,ncol(Zb)+1]+ b[,2])^2)
+      
+      check0 <- y1
+      check0[check0 > 0] <- 1
+      
+      
+      y2 <- matrix(rlnorm(2*n,c(muy1,muy2),rep(sqrt(sigma2y[i]),2*n)),ncol=2,byrow=FALSE)
+      y2[check0==0] <- 0
+
+      y1zeroboth[i] <- sum(rowSums(y1)==0)
+      y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
+      y1ones[i] <- sum(y1==1)
+      y1twos[i] <- sum(y1==2)
+      y1meanwpsd[i] <- mean(apply(y1,1,sd))
+      y1wprange[i] <- max(abs(apply(y1,1,function(x){return(x[2]-x[1])})))
+      y1overallrange[i] <- max(y1)-min(y1)
+      
+      y100[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+      y110[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+      y101[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+      y120[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+      y102[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+      y112[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+      y121[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+      y111[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+      y122[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+      
+      y2zeroboth[i] <- sum(rowSums(y2)==0)
+      y2zeroeither[i] <- sum(apply(y2,1,function(x){return(!0%in%x)}))
+      y2greaterthan[i] <- sum(y1[,1]*30+y2[,1]>450/7)
+      y2median[i] <- median(c(y2[y2>0]))
+      y2q15[i] <- quantile(c(y2[y2>0]),probs=c(0.20))
+      y2q25[i] <- quantile(c(y2[y2>0]),probs=c(0.25))
+      y2q35[i] <- quantile(c(y2[y2>0]),probs=c(0.35))
+      y2q90[i] <- quantile(c(y2[y2>0]),probs=c(0.9))
+      y2q95[i] <- quantile(c(y2[y2>0]),probs=c(0.95))
+      y2q30[i] <- quantile(c(y2[y2>0]),probs=c(0.3))
+      y1y2cor[i] <- cor(c(y1[y1>0]),c(y2[y2>0]))
+      y2mean[i] <- mean(y2[y2>0])
+      y2var[i] <- var(y2[y2>0])
+      #print(i)
+      
+      x3 <- 30*x1 + p*x2
+      pcomply[i] <- sum(x3>450/7)/n
+      pcomply2[i] <- sum(x3>450/5)/n
+      
+      kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
+    }
+  }
   if(ymodel=="6"){
     gamma <- mcmcout$gamma[ind,]
     betay <- mcmcout$betay[ind,]
@@ -946,8 +1039,8 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
       #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
       b <- matrix(0,nrow=n,ncol=2)
-      b[,1] <- rnorm(n,0,sigma2b[i,1])
-      b[,2] <- rnorm(n,0,sigma2b[i,2])
+      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      #b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
       
       #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
@@ -1013,8 +1106,472 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
     }
   }
-  
+  if(ymodel=="7"){
+    gamma <- mcmcout$gamma[ind,]
+    betay <- mcmcout$betay[ind,]
+    alpha <- mcmcout$alpha[ind,]
+    sigma2y <- mcmcout$sigma2y[ind]
+    sigma2x <- mcmcout$sigma2x[ind]
     
+    eta <- mcmcout$eta[ind]
+    phi <- mcmcout$phi[ind]
+    
+    theta <- mcmcout$theta[ind]
+    delta <- mcmcout$delta[ind]
+    lambda <- mcmcout$lambda[ind]
+    latentx1 <- mcmcout$latentx1[ind,]
+    latentx2 <- mcmcout$latentx2[ind,]
+    #mux1 <- mcmcout$mux1[ind,]
+    #muy <- mcmcout$muy[ind,]
+    sigma2b <- mcmcout$sigma2b[ind,]
+    corrb <- mcmcout$corrb[ind]
+    
+    #mux2 <- mcmcout$mux2[ind,]
+    
+    for(i in 1:nsim){
+      #corresponds to nci model with correlated re in mu and lambda (normal)
+      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      b <- matrix(0,nrow=n,ncol=2)
+      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      
+      #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
+      
+      
+      x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #print(summary(x1))
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + log(x1)*betay[i,ncol(Zb)+1] + b[,2]
+      x2 <- ((muy)^(2))*gamma(1+1/phi[i])
+      y1 <- matrix(0,ncol=2,nrow=n)
+      
+      for(j in 1:n){
+        y1[j,] <- rgenpois(2,x1[j],lambda[i])
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
+        
+      }
+      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + log(y1[,1])*betay[i,ncol(Zb)+1]+ b[,2])^(2)
+      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + log(y1[,2])*betay[i,ncol(Zb)+1]+ b[,2])^(2)
+      check0 <- y1
+      check0[check0 > 0] <- 1
+      
+      y2 <- matrix(rweibull(2*n,rep(phi[i],2*n),c(muy1,muy2)),ncol=2,byrow=FALSE)
+      y2[check0==0] <- 0
+      y1zeroboth[i] <- sum(rowSums(y1)==0)
+      y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
+      y1ones[i] <- sum(y1==1)
+      y1twos[i] <- sum(y1==2)
+      y1meanwpsd[i] <- mean(apply(y1,1,sd))
+      y1wprange[i] <- max(abs(apply(y1,1,function(x){return(x[2]-x[1])})))
+      y1overallrange[i] <- max(y1)-min(y1)
+      
+      y100[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+      y110[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+      y101[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+      y120[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+      y102[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+      y112[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+      y121[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+      y111[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+      y122[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+      
+      y2zeroboth[i] <- sum(rowSums(y2)==0)
+      y2zeroeither[i] <- sum(apply(y2,1,function(x){return(!0%in%x)}))
+      y2greaterthan[i] <- sum(y1[,1]*30+y2[,1]>450/7)
+      y2median[i] <- median(c(y2[y2>0]))
+      y2q15[i] <- quantile(c(y2[y2>0]),probs=c(0.20))
+      y2q25[i] <- quantile(c(y2[y2>0]),probs=c(0.25))
+      y2q35[i] <- quantile(c(y2[y2>0]),probs=c(0.35))
+      y2q90[i] <- quantile(c(y2[y2>0]),probs=c(0.9))
+      y2q95[i] <- quantile(c(y2[y2>0]),probs=c(0.95))
+      y2q30[i] <- quantile(c(y2[y2>0]),probs=c(0.3))
+      y1y2cor[i] <- cor(c(y1[y1>0]),c(y2[y2>0]))
+      y2mean[i] <- mean(y2[y2>0])
+      y2var[i] <- var(y2[y2>0])
+      #print(i)
+      
+      x3 <- 30*x1 + p*x2
+      pcomply[i] <- sum(x3>450/7)/n
+      pcomply2[i] <- sum(x3>450/5)/n
+      
+      kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
+    }
+  }
+  if(ymodel=="7b"){
+    gamma <- mcmcout$gamma[ind,]
+    betay <- mcmcout$betay[ind,]
+    alpha <- mcmcout$alpha[ind,]
+    sigma2y <- mcmcout$sigma2y[ind]
+    sigma2x <- mcmcout$sigma2x[ind]
+    
+    eta <- mcmcout$eta[ind]
+    phi <- mcmcout$phi[ind]
+    
+    theta <- mcmcout$theta[ind]
+    delta <- mcmcout$delta[ind]
+    lambda <- mcmcout$lambda[ind]
+    latentx1 <- mcmcout$latentx1[ind,]
+    latentx2 <- mcmcout$latentx2[ind,]
+    #mux1 <- mcmcout$mux1[ind,]
+    #muy <- mcmcout$muy[ind,]
+    sigma2b <- mcmcout$sigma2b[ind,]
+    corrb <- mcmcout$corrb[ind]
+    
+    #mux2 <- mcmcout$mux2[ind,]
+    
+    for(i in 1:nsim){
+      #corresponds to nci model with correlated re in mu and lambda (normal)
+      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      b <- matrix(0,nrow=n,ncol=2)
+      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      
+      #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
+      
+      
+      x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #print(summary(x1))
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(x1)*betay[i,ncol(Zb)+1] + b[,2]
+      x2 <- ((muy)^(2))*gamma(1+1/phi[i])
+      y1 <- matrix(0,ncol=2,nrow=n)
+      
+      for(j in 1:n){
+        y1[j,] <- rgenpois(2,x1[j],lambda[i])
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
+        
+      }
+      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,1])*betay[i,ncol(Zb)+1]+ b[,2])^(2)
+      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,2])*betay[i,ncol(Zb)+1]+ b[,2])^(2)
+      check0 <- y1
+      check0[check0 > 0] <- 1
+      
+      y2 <- matrix(rweibull(2*n,rep(phi[i],2*n),c(muy1,muy2)),ncol=2,byrow=FALSE)
+      y2[check0==0] <- 0
+      y1zeroboth[i] <- sum(rowSums(y1)==0)
+      y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
+      y1ones[i] <- sum(y1==1)
+      y1twos[i] <- sum(y1==2)
+      y1meanwpsd[i] <- mean(apply(y1,1,sd))
+      y1wprange[i] <- max(abs(apply(y1,1,function(x){return(x[2]-x[1])})))
+      y1overallrange[i] <- max(y1)-min(y1)
+      
+      y100[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+      y110[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+      y101[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+      y120[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+      y102[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+      y112[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+      y121[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+      y111[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+      y122[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+      
+      y2zeroboth[i] <- sum(rowSums(y2)==0)
+      y2zeroeither[i] <- sum(apply(y2,1,function(x){return(!0%in%x)}))
+      y2greaterthan[i] <- sum(y1[,1]*30+y2[,1]>450/7)
+      y2median[i] <- median(c(y2[y2>0]))
+      y2q15[i] <- quantile(c(y2[y2>0]),probs=c(0.20))
+      y2q25[i] <- quantile(c(y2[y2>0]),probs=c(0.25))
+      y2q35[i] <- quantile(c(y2[y2>0]),probs=c(0.35))
+      y2q90[i] <- quantile(c(y2[y2>0]),probs=c(0.9))
+      y2q95[i] <- quantile(c(y2[y2>0]),probs=c(0.95))
+      y2q30[i] <- quantile(c(y2[y2>0]),probs=c(0.3))
+      y1y2cor[i] <- cor(c(y1[y1>0]),c(y2[y2>0]))
+      y2mean[i] <- mean(y2[y2>0])
+      y2var[i] <- var(y2[y2>0])
+      #print(i)
+      
+      x3 <- 30*x1 + p*x2
+      pcomply[i] <- sum(x3>450/7)/n
+      pcomply2[i] <- sum(x3>450/5)/n
+      
+      kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
+    }
+  }
+  if(ymodel=="7c"){
+    gamma <- mcmcout$gamma[ind,]
+    betay <- mcmcout$betay[ind,]
+    alpha <- mcmcout$alpha[ind,]
+    sigma2y <- mcmcout$sigma2y[ind]
+    sigma2x <- mcmcout$sigma2x[ind]
+    
+    eta <- mcmcout$eta[ind]
+    phi <- mcmcout$phi[ind]
+    
+    theta <- mcmcout$theta[ind]
+    delta <- mcmcout$delta[ind]
+    lambda <- mcmcout$lambda[ind]
+    latentx1 <- mcmcout$latentx1[ind,]
+    latentx2 <- mcmcout$latentx2[ind,]
+    #mux1 <- mcmcout$mux1[ind,]
+    #muy <- mcmcout$muy[ind,]
+    sigma2b <- mcmcout$sigma2b[ind,]
+    corrb <- mcmcout$corrb[ind]
+    
+    #mux2 <- mcmcout$mux2[ind,]
+    
+    for(i in 1:nsim){
+      #corresponds to nci model with correlated re in mu and lambda (normal)
+      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      b <- matrix(0,nrow=n,ncol=2)
+      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      
+      #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
+      
+      
+      x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #print(summary(x1))
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(x1)*betay[i,ncol(Zb)+1] + b[,2]
+      x2 <- ((muy)^(-2))*gamma(1+1/phi[i])
+      y1 <- matrix(0,ncol=2,nrow=n)
+      
+      for(j in 1:n){
+        y1[j,] <- rgenpois(2,x1[j],lambda[i])
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
+        
+      }
+      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,1])*betay[i,ncol(Zb)+1]+ b[,2])^(-2)
+      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,2])*betay[i,ncol(Zb)+1]+ b[,2])^(-2)
+      check0 <- y1
+      check0[check0 > 0] <- 1
+      
+      y2 <- matrix(rweibull(2*n,rep(phi[i],2*n),c(muy1,muy2)),ncol=2,byrow=FALSE)
+      y2[check0==0] <- 0
+      y1zeroboth[i] <- sum(rowSums(y1)==0)
+      y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
+      y1ones[i] <- sum(y1==1)
+      y1twos[i] <- sum(y1==2)
+      y1meanwpsd[i] <- mean(apply(y1,1,sd))
+      y1wprange[i] <- max(abs(apply(y1,1,function(x){return(x[2]-x[1])})))
+      y1overallrange[i] <- max(y1)-min(y1)
+      
+      y100[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+      y110[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+      y101[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+      y120[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+      y102[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+      y112[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+      y121[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+      y111[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+      y122[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+      
+      y2zeroboth[i] <- sum(rowSums(y2)==0)
+      y2zeroeither[i] <- sum(apply(y2,1,function(x){return(!0%in%x)}))
+      y2greaterthan[i] <- sum(y1[,1]*30+y2[,1]>450/7)
+      y2median[i] <- median(c(y2[y2>0]))
+      y2q15[i] <- quantile(c(y2[y2>0]),probs=c(0.20))
+      y2q25[i] <- quantile(c(y2[y2>0]),probs=c(0.25))
+      y2q35[i] <- quantile(c(y2[y2>0]),probs=c(0.35))
+      y2q90[i] <- quantile(c(y2[y2>0]),probs=c(0.9))
+      y2q95[i] <- quantile(c(y2[y2>0]),probs=c(0.95))
+      y2q30[i] <- quantile(c(y2[y2>0]),probs=c(0.3))
+      y1y2cor[i] <- cor(c(y1[y1>0]),c(y2[y2>0]))
+      y2mean[i] <- mean(y2[y2>0])
+      y2var[i] <- var(y2[y2>0])
+      #print(i)
+      
+      x3 <- 30*x1 + p*x2
+      pcomply[i] <- sum(x3>450/7)/n
+      pcomply2[i] <- sum(x3>450/5)/n
+      
+      kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
+    }
+  }
+  if(ymodel=="8"){
+    gamma <- mcmcout$gamma[ind,]
+    betay <- mcmcout$betay[ind,]
+    alpha <- mcmcout$alpha[ind,]
+    sigma2y <- mcmcout$sigma2y[ind]
+    sigma2x <- mcmcout$sigma2x[ind]
+    
+    eta <- mcmcout$eta[ind]
+    phi <- mcmcout$phi[ind]
+    
+    theta <- mcmcout$theta[ind]
+    delta <- mcmcout$delta[ind]
+    lambda <- mcmcout$lambda[ind]
+    latentx1 <- mcmcout$latentx1[ind,]
+    latentx2 <- mcmcout$latentx2[ind,]
+    #mux1 <- mcmcout$mux1[ind,]
+    #muy <- mcmcout$muy[ind,]
+    sigma2b <- mcmcout$sigma2b[ind,]
+    corrb <- mcmcout$corrb[ind]
+    
+    #mux2 <- mcmcout$mux2[ind,]
+    
+    for(i in 1:nsim){
+      #corresponds to nci model with correlated re in mu and lambda (normal)
+      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      #b <- matrix(0,nrow=n,ncol=2)
+      #b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      #[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      
+      #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
+      mux1 <- exp(as.numeric((Zb%*%gamma[i,])))
+      x1 <- rgamma(n,eta[i],eta[i]/mux1)
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + log(x1)*betay[i,ncol(Zb)+1]
+      
+      
+      #x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #print(summary(x1))
+      #muy <- Zb%*%(betay[i,1:ncol(Zb)]) + log(x1)*betay[i,ncol(Zb)+1] + b[,2]
+      x2 <- ((muy)^(2))*gamma(1+1/phi[i])
+      y1 <- matrix(0,ncol=2,nrow=n)
+      
+      for(j in 1:n){
+        y1[j,] <- rgenpois(2,x1[j],lambda[i])
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
+        
+      }
+      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + log(y1[,1])*betay[i,ncol(Zb)+1])^(2)
+      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + log(y1[,2])*betay[i,ncol(Zb)+1])^(2)
+      check0 <- y1
+      check0[check0 > 0] <- 1
+      
+      y2 <- matrix(rweibull(2*n,rep(phi[i],2*n),c(muy1,muy2)),ncol=2,byrow=FALSE)
+      y2[check0==0] <- 0
+      y1zeroboth[i] <- sum(rowSums(y1)==0)
+      y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
+      y1ones[i] <- sum(y1==1)
+      y1twos[i] <- sum(y1==2)
+      y1meanwpsd[i] <- mean(apply(y1,1,sd))
+      y1wprange[i] <- max(abs(apply(y1,1,function(x){return(x[2]-x[1])})))
+      y1overallrange[i] <- max(y1)-min(y1)
+      
+      y100[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+      y110[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+      y101[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+      y120[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+      y102[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+      y112[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+      y121[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+      y111[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+      y122[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+      
+      y2zeroboth[i] <- sum(rowSums(y2)==0)
+      y2zeroeither[i] <- sum(apply(y2,1,function(x){return(!0%in%x)}))
+      y2greaterthan[i] <- sum(y1[,1]*30+y2[,1]>450/7)
+      y2median[i] <- median(c(y2[y2>0]))
+      y2q15[i] <- quantile(c(y2[y2>0]),probs=c(0.20))
+      y2q25[i] <- quantile(c(y2[y2>0]),probs=c(0.25))
+      y2q35[i] <- quantile(c(y2[y2>0]),probs=c(0.35))
+      y2q90[i] <- quantile(c(y2[y2>0]),probs=c(0.9))
+      y2q95[i] <- quantile(c(y2[y2>0]),probs=c(0.95))
+      y2q30[i] <- quantile(c(y2[y2>0]),probs=c(0.3))
+      y1y2cor[i] <- cor(c(y1[y1>0]),c(y2[y2>0]))
+      y2mean[i] <- mean(y2[y2>0])
+      y2var[i] <- var(y2[y2>0])
+      #print(i)
+      
+      x3 <- 30*x1 + p*x2
+      pcomply[i] <- sum(x3>450/7)/n
+      pcomply2[i] <- sum(x3>450/5)/n
+      
+      kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
+    }
+  }
+  if(ymodel=="8b"){
+    gamma <- mcmcout$gamma[ind,]
+    betay <- mcmcout$betay[ind,]
+    alpha <- mcmcout$alpha[ind,]
+    sigma2y <- mcmcout$sigma2y[ind]
+    sigma2x <- mcmcout$sigma2x[ind]
+    
+    eta <- mcmcout$eta[ind]
+    phi <- mcmcout$phi[ind]
+    
+    theta <- mcmcout$theta[ind]
+    delta <- mcmcout$delta[ind]
+    lambda <- mcmcout$lambda[ind]
+    latentx1 <- mcmcout$latentx1[ind,]
+    latentx2 <- mcmcout$latentx2[ind,]
+    #mux1 <- mcmcout$mux1[ind,]
+    #muy <- mcmcout$muy[ind,]
+    sigma2b <- mcmcout$sigma2b[ind,]
+    corrb <- mcmcout$corrb[ind]
+    
+    #mux2 <- mcmcout$mux2[ind,]
+    
+    for(i in 1:nsim){
+      #corresponds to nci model with correlated re in mu and lambda (normal)
+      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      #b <- matrix(0,nrow=n,ncol=2)
+      #b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
+      #[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      
+      #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
+      mux1 <- exp(as.numeric((Zb%*%gamma[i,])))
+      x1 <- rgamma(n,eta[i],eta[i]/mux1)
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(x1)*betay[i,ncol(Zb)+1]
+      
+      
+      #x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
+      #print(summary(x1))
+      #muy <- Zb%*%(betay[i,1:ncol(Zb)]) + log(x1)*betay[i,ncol(Zb)+1] + b[,2]
+      x2 <- ((muy)^(2))*gamma(1+1/phi[i])
+      y1 <- matrix(0,ncol=2,nrow=n)
+      
+      for(j in 1:n){
+        y1[j,] <- rgenpois(2,x1[j],lambda[i])
+        p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
+        
+      }
+      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,1])*betay[i,ncol(Zb)+1])^(2)
+      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,2])*betay[i,ncol(Zb)+1])^(2)
+      check0 <- y1
+      check0[check0 > 0] <- 1
+      
+      y2 <- matrix(rweibull(2*n,rep(phi[i],2*n),c(muy1,muy2)),ncol=2,byrow=FALSE)
+      y2[check0==0] <- 0
+      y1zeroboth[i] <- sum(rowSums(y1)==0)
+      y1zeroeither[i] <- sum(apply(y1,1,function(x){return(!0%in%x)}))
+      y1ones[i] <- sum(y1==1)
+      y1twos[i] <- sum(y1==2)
+      y1meanwpsd[i] <- mean(apply(y1,1,sd))
+      y1wprange[i] <- max(abs(apply(y1,1,function(x){return(x[2]-x[1])})))
+      y1overallrange[i] <- max(y1)-min(y1)
+      
+      y100[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==0)}))
+      y110[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==0)}))
+      y101[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]==1)}))
+      y120[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==0)}))
+      y102[i] <- sum(apply(y1,1,function(x){return(x[1]==0 & x[2]>=2)}))
+      y112[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]>=2)}))
+      y121[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]==1)}))
+      y111[i] <- sum(apply(y1,1,function(x){return(x[1]==1 & x[2]==1)}))
+      y122[i] <- sum(apply(y1,1,function(x){return(x[1]>=2 & x[2]>=2)}))
+      
+      y2zeroboth[i] <- sum(rowSums(y2)==0)
+      y2zeroeither[i] <- sum(apply(y2,1,function(x){return(!0%in%x)}))
+      y2greaterthan[i] <- sum(y1[,1]*30+y2[,1]>450/7)
+      y2median[i] <- median(c(y2[y2>0]))
+      y2q15[i] <- quantile(c(y2[y2>0]),probs=c(0.20))
+      y2q25[i] <- quantile(c(y2[y2>0]),probs=c(0.25))
+      y2q35[i] <- quantile(c(y2[y2>0]),probs=c(0.35))
+      y2q90[i] <- quantile(c(y2[y2>0]),probs=c(0.9))
+      y2q95[i] <- quantile(c(y2[y2>0]),probs=c(0.95))
+      y2q30[i] <- quantile(c(y2[y2>0]),probs=c(0.3))
+      y1y2cor[i] <- cor(c(y1[y1>0]),c(y2[y2>0]))
+      y2mean[i] <- mean(y2[y2>0])
+      y2var[i] <- var(y2[y2>0])
+      #print(i)
+      
+      x3 <- 30*x1 + p*x2
+      pcomply[i] <- sum(x3>450/7)/n
+      pcomply2[i] <- sum(x3>450/5)/n
+      
+      kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
+    }
+  }
   out <- data.frame(cbind(y1zeroboth,y1zeroeither,y1ones,y1twos,y1meanwpsd,y1wprange,y1overallrange,
               y2zeroboth,y2zeroeither,y2greaterthan,y1y2regcoef,y1y2cor,y2median,
               y2q15,y2q25,y2q35,y2q90,y2q95,y2q30,pcomply,pcomply2,y110,y101,y100,

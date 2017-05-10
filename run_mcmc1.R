@@ -42,13 +42,13 @@ x1propa <- y1rowmean^2/y1rowvar
 #currentalpha=c(-.32,0.47,.001)
 ncomp=3
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
-init = list(currentbetay=rep(0,ncol(data$Za)+1),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0,0,0,0.48),currentalpha=rep(0,ncol(data$Zb)),
+init = list(currentbetay=c(1,0,0,0,0,0,0,0,0),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0,0,0,0.48),currentalpha=rep(0,ncol(data$Zb)),
             currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             currentu=rep(0,nrow(data$y1)),gammatune=rep(0.000001,ncol(Za)),
             propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
             x1propa=x1propa,x1propb=x1propb,
-            currenttheta=rep(1,1),betaxtune=rep(0.0001,ncol(Za)+1), 
+            currenttheta=rep(1,1),betaxtune=c(1,rep(0.01,ncol(Za)-1),1), 
             propax2=1,propbx2=0.5,
             currentlambda=0.5,propl1=1,propl2=1,
             currentdelta=1,propd1=1,propd2=1,alphatune=rep(0.0000001,ncol(data$Zb)),
@@ -81,7 +81,16 @@ mcmc2c2 = mcmc_2part_nci2c2(data=data,init=init,priors=prior,nrep=6000,burn=2000
 mcmc2c3 = mcmc_2part_nci2c3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 mcmc5 = mcmc_2part_nci5(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc5b = mcmc_2part_nci5b(data=data,init=init,priors=prior,nrep=20000,burn=10000)
+
 mcmc6 = mcmc_2part_nci6(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+
+mcmc7 = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=20000,burn=10000)
+mcmc7b = mcmc_2part_nci7b(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc8 = mcmc_2part_nci8(data=data,init=init,priors=prior,nrep=100000,burn=50000)
+mcmc8b = mcmc_2part_nci8b(data=data,init=init,priors=prior,nrep=100000,burn=50000)
+
+mcmc9 = mcmc_2part_nci9(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
@@ -175,7 +184,14 @@ assessln2c2 <- pp_assess(mcmc2c2,data$Zb,400,"2c2",y1,y2,burn=2000)
 assessln2c3 <- pp_assess(mcmc2c3,data$Zb,400,"2c3",y1,y2,burn=2000)
 
 assessln5 <- pp_assess(mcmc5,data$Zb,400,"5",y1,y2,burn=2000)
-assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=2000)
+assessln5b <- pp_assess(mcmc5b,data$Zb,400,"5b",y1,y2,burn=10000)
+
+assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=10000)
+
+assessln7 <- pp_assess(mcmc7,data$Zb,2000,"7",y1,y2,burn=10000)
+assessln7b <- pp_assess(mcmc7b,data$Zb,2000,"7b",y1,y2,burn=50000)
+assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
+assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -214,7 +230,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln6$out
+assess=assessln7$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))

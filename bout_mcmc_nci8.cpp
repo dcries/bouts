@@ -5,8 +5,11 @@
 
 using namespace Rcpp;
 
-// re in mean of y1 and in mean of y2, normal, indepedent re
+// gamma re in y1
 // y2 weibull
+//same as 6 but with power link instead of log link
+// power of 2 and log(y1)
+//
 
 
 //// [[Rcpp::export]]
@@ -320,6 +323,8 @@ double log_qbeta(arma::vec cx, arma::mat vx, double phi, arma::mat mu1,
       if(y2(i,j)>0){
         //out += R::dgamma(y2[i],delta,1/(delta/mu1[i]),true);
         out += R::dweibull(y2(i,j),phi,mu1(i,j),true);
+        //std::cout << "dweibull= " << R::dweibull(y2(i,j),phi,mu1(i,j),true) << "\n";
+        //std::cout << "mu(i,j)= " << mu1(i,j) << "\n";
       }
     }
   }
@@ -345,11 +350,11 @@ arma::vec sample_betay(arma::vec cx, arma::mat vx, double phi, arma::mat mu1,
     proposal[i] = proposalm(0,i);
   }
   
-  mu1prop.col(0) = exp(Za1*proposal+currentb);
-  mu1prop.col(1) = exp(Za2*proposal+currentb);
-
+  mu1prop.col(0) = pow(Za1*proposal+currentb,2.0);
+  mu1prop.col(1) = pow(Za2*proposal+currentb,2.0);
+  
   lacceptprob = log_qbeta(cx,vx,phi,mu1prop,y2,proposal)-log_qbeta(cx,vx,phi,mu1,y2,betay);
-  ////std::cout << "after dvrnorm\n";
+  //std::cout << lacceptprob << "\n";
   
   if(log(R::runif(0,1))<lacceptprob){
     out = proposal;
@@ -358,42 +363,25 @@ arma::vec sample_betay(arma::vec cx, arma::mat vx, double phi, arma::mat mu1,
 }
 
 //// [[Rcpp::export]]
-double log_qgamma(arma::vec cx, arma::mat vx, double lambda, arma::vec mu1, 
-                  arma::mat y1, arma::mat y2, arma::mat muy2, arma::vec p, double phi, arma::vec gam){
+double log_qgamma(arma::vec cx, arma::mat vx, double eta, arma::vec mu1, arma::vec x1, arma::vec gam){
   double out = 0.0;
-  int n = y1.n_rows;
-  int k = y1.n_cols;
+  int n = x1.size();
   for(int i=0;i<n;i++){
-    
-    for(int j=0;j<k;j++){
-      out += dgenpois(y1(i,j),mu1[i],lambda,true);
-      if(y2(i,j)==0){
-        out += log(1-p[i]);
-      }
-      else{
-        //out += log(p[i]) + R::dlnorm(y2(i,j),muy2(i,j),sqrt(sigma2y),true);
-        out += log(p[i]) + R::dweibull(y2(i,j),phi,muy2(i,j),true);
-        
-      }
-    }
-    //out += R::dgamma(x1[i],eta,1/(eta/mu1[i]),true);
-  
+    out += R::dgamma(x1[i],eta,1/(eta/mu1[i]),true);
   }
   out += dmvnrm_arma(gam,cx.t(),vx,true);
   return(out);
 }
 
 //// [[Rcpp::export]]
-arma::vec sample_gamma(arma::vec cx, arma::mat vx, double lambda, arma::vec mu1, 
-                       arma::mat y1, arma::mat y2, arma::mat muy2, arma::mat Za, 
-                       arma::vec gamma, arma::vec p, double phi,
-                       arma::mat Sigma_1, arma::mat currentb,double divisor=1.0){
+arma::vec sample_gamma(arma::vec cx, arma::mat vx, double eta, arma::vec mu1, 
+                       arma::vec x1, arma::mat Za, arma::vec gamma, 
+                       arma::mat Sigma_1, arma::vec currentb, double divisor=1.0){
   int k = cx.size();
-  int n = y1.n_rows;
+  int n = x1.size();
   double lacceptprob;
   arma::vec out = gamma;
   arma::vec mu1prop(n);
-  arma::vec propp(n);
   arma::mat proposalm;
   arma::vec proposal(k);
   // //std::cout << "before mvrnorm \n";
@@ -406,11 +394,9 @@ arma::vec sample_gamma(arma::vec cx, arma::mat vx, double lambda, arma::vec mu1,
     proposal[i] = proposalm(0,i);
   }
   
-  mu1prop = exp(Za*proposal+currentb.col(0));
-  propp = calc_p(mu1prop,lambda);
+  mu1prop = exp(Za*proposal+currentb);
   
-  lacceptprob = log_qgamma(cx,vx,lambda,mu1prop,y1,y2,muy2,propp,phi,proposal)-
-    log_qgamma(cx,vx,lambda,mu1,y1,y2,muy2,p,phi,gamma);
+  lacceptprob = log_qgamma(cx,vx,eta,mu1prop,x1,proposal)-log_qgamma(cx,vx,eta,mu1,x1,gamma);
   ////std::cout << "after dvrnorm\n";
   
   if(log(R::runif(0,1))<lacceptprob){
@@ -418,6 +404,7 @@ arma::vec sample_gamma(arma::vec cx, arma::mat vx, double lambda, arma::vec mu1,
   }
   return(out);
 }
+
 
 
 
@@ -791,40 +778,27 @@ double sample_phi(double ad, double bd, double phi, arma::mat y2, arma::mat x2, 
 
 
 
-double log_ql(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
-              arma::vec p,double phi,double lambda, double a0l, double b0l){
+double log_ql(arma::mat y1, arma::vec x1, double lambda, double a0l, double b0l){
   double out = 0.0;
   int k = y1.n_cols;
   int n = y1.n_rows;
   for(int i=0;i<n;i++){
     for(int j=0;j<k;j++){
       out += dgenpois(y1(i,j),x1[i],lambda);
-      if(y2(i,j)==0){
-        out += log(1-p[i]);
-      }
-      else{
-        //out += log(p[i]) + R::dlnorm(y2(i,j),muy2(i,j),sqrt(sigma2y),true);
-        out += log(p[i]) + R::dweibull(y2(i,j),phi,muy2(i,j),true);
-      }
     }
-    
   }
   out += (a0l-1)*log(lambda) + (1-b0l)*log(1-lambda);
   return out;
 }
 
 //// [[Rcpp::export]]
-double sample_lambda(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
-                     arma::vec p, double phi, double lambda, double a0l, double b0l,
+double sample_lambda(arma::mat y1, arma::vec x1, double lambda, double a0l, double b0l,
                      double propl1, double propl2){
   double out = lambda;
   double proposal = R::rbeta(propl1,propl2);
   double lacceptprob;
-  int n = x1.size();
-  arma::vec pprop(n);
-  pprop = calc_p(x1,proposal);
   
-  lacceptprob = log_ql(y1,y2,x1,muy2,pprop,phi,proposal,a0l,b0l) - log_ql(y1,y2,x1,muy2,p,phi,lambda,a0l,b0l) -
+  lacceptprob = log_ql(y1,x1,proposal,a0l,b0l) - log_ql(y1,x1,lambda,a0l,b0l) -
     R::dbeta(proposal,propl1,propl2,true) + R::dbeta(lambda,propl1,propl2,true);
   
   if(log(R::runif(0,1))<lacceptprob){
@@ -841,6 +815,48 @@ arma::mat sample_Sigmab(int d0, arma::mat D0, arma::mat currentb){
   arma::mat scale = D0 + currentb.t()*currentb;
   arma::mat out(k,k);
   out = rinvwish(1,df,scale);
+  return out;
+}
+
+double log_qx1(double x1, arma::rowvec y1, 
+               double mux1, double eta, double lambda){
+  double ll2=0.0;
+  double ll4=0.0;
+  
+  int k = y1.size();
+  
+  ll2 = R::dgamma(x1,eta,1.0/(eta/mux1),true);
+  
+  for(int i=0;i<k;i++){
+    ll4 += dgenpois(y1[i],x1,lambda);
+  }
+  
+  return ll2+ll4;
+}
+
+//// [[Rcpp::export]]
+arma::vec sample_x1(arma::vec x1, arma::mat y1,arma::vec mux1,
+                    double eta,arma::vec x1propa, arma::vec x1propb, double lambda){
+  int n = x1.size();
+  arma::vec out = x1; 
+  
+  
+  double propx;
+  double lacceptprob;
+  
+  for(int i=0;i<n;i++){
+    //propx = R::rexp(x1tune[i]);
+    propx = R::rgamma(x1propa[i],1/x1propb[i]);
+    
+    lacceptprob = log_qx1(propx,y1.row(i),mux1[i],eta,lambda) - 
+      log_qx1(x1[i],y1.row(i),mux1[i],eta,lambda) -
+      //R::dexp(propx,x1tune[i],true) + R::dexp(x1[i],x1tune[i],true);
+      R::dgamma(propx,x1propa[i],1/x1propb[i],true) + R::dgamma(x1[i],x1propa[i],1/x1propb[i],true);
+    
+    if(log(R::runif(0,1))<lacceptprob){
+      out[i]=propx;
+    }
+  }
   return out;
 }
 
@@ -935,11 +951,11 @@ arma::mat sample_b(arma::mat y1, arma::mat y2,arma::vec muy1,arma::mat muy2,arma
 }
 
 double log_qb1(arma::rowvec y1, arma::rowvec y2, double muy, arma::vec muy2, double lambdau,
-              double phi, double currentb, double Sigmab){
+               double phi, double currentb, double Sigmab){
   int n = y1.size();
   double ll=0.0;
   double p0;
-
+  
   
   p0 = 1-dgenpois(0,muy,lambdau,false);
   for(int i=0;i<n;i++){
@@ -1004,7 +1020,7 @@ arma::vec sample_b1(arma::mat y1, arma::mat y2,arma::vec muy1,arma::mat muy2,arm
   arma::vec out = currentb;
   double propb;
   double muy1prop;
-
+  
   for(int i=0;i<n;i++){
     muy1prop = 0.0;
     //std::cout << "b\n";
@@ -1032,9 +1048,9 @@ arma::vec sample_b1(arma::mat y1, arma::mat y2,arma::vec muy1,arma::mat muy2,arm
 }
 
 arma::vec sample_b2(arma::mat y2,arma::mat muy2,arma::vec currentb, 
-                   double Sigmab, arma::vec betay,
-                   arma::mat Zby1, arma::mat Zby2, double phi, 
-                   arma::vec Sigma_1, arma::vec p0){
+                    double Sigmab, arma::vec betay,
+                    arma::mat Zby1, arma::mat Zby2, double phi, 
+                    arma::vec Sigma_1, arma::vec p0){
   //std::cout << "a\n";
   
   int n = y2.n_rows;
@@ -1050,7 +1066,7 @@ arma::vec sample_b2(arma::mat y2,arma::mat muy2,arma::vec currentb,
     //std::cout << "b\n";
     propb = R::rnorm(currentb[i],2.4*sqrt(Sigma_1[i]));
     //std::cout << "c\n";
-
+    
     for(int j=0;j<kzb;j++){
       muy2prop[0] += Zby1(i,j)*betay[j];
       muy2prop[1] += Zby2(i,j)*betay[j];
@@ -1061,7 +1077,7 @@ arma::vec sample_b2(arma::mat y2,arma::mat muy2,arma::vec currentb,
     
     //std::cout << "d\n";
     
-    lacceptprob = log_qb2(y2.row(i),exp(muy2prop),phi,propb,Sigmab,p0[i]) - 
+    lacceptprob = log_qb2(y2.row(i),pow(muy2prop,2.0),phi,propb,Sigmab,p0[i]) - 
       log_qb2(y2.row(i),muy2.row(i).t(),phi,currentb[i],Sigmab,p0[i]);
     //std::cout << "e\n";
     if(log(R::runif(0,1)) < lacceptprob){
@@ -1135,7 +1151,7 @@ double calc_ind_dic(arma::mat y1, arma::mat y2, arma::vec mux1, arma::mat b,
 
 
 // [[Rcpp::export]]
-List mcmc_2part_nci6(List data, 
+List mcmc_2part_nci8(List data, 
                      List init, 
                      List priors, 
                      const int nreps, 
@@ -1185,8 +1201,8 @@ List mcmc_2part_nci6(List data,
   
   //std::cout << "2a\n";
   
-  //double propa     = as<double>(init["propa"]);
-  //double propb     = as<double>(init["propb"]);
+  double propa     = as<double>(init["propa"]);
+  double propb     = as<double>(init["propb"]);
   //double propax2     = as<double>(init["propax2"]);
   //double propbx2     = as<double>(init["propbx2"]);
   //double propx2     = as<double>(init["propx2"]);
@@ -1228,8 +1244,8 @@ List mcmc_2part_nci6(List data,
   arma::mat V0x2             = as<arma::mat>(priors["V0x2"]);
   arma::mat V0a             = as<arma::mat>(priors["V0a"]);
   arma::mat D0             = as<arma::mat>(priors["D0"]);
-  //double a0eta                 = as<double>(priors["a0eta"]);
-  //double b0eta                 = as<double>(priors["b0eta"]);
+  double a0eta                 = as<double>(priors["a0eta"]);
+  double b0eta                 = as<double>(priors["b0eta"]);
   //double a0theta                 = as<double>(priors["a0theta"]);
   //double b0theta                 = as<double>(priors["b0theta"]);
   double a0x                = as<double>(priors["a0x"]);
@@ -1327,20 +1343,22 @@ List mcmc_2part_nci6(List data,
   arma::mat meanSigmab(nbre,nbre);
   
   arma::vec b3sub = arma::join_cols(subset(currentb.col(1),indy1),subset(currentb.col(1),indy2));
+  currentlmuy = calc_lmu(x1x2y1,currentbetay,currentb.col(1));
+  currentlmuy2 = calc_lmu(x1x2y2,currentbetay,currentb.col(1));
   
   for(int i=0;i<nreps;i++){
     ///std::cout << "4\n";
     
-    //currenteta = sample_eta(a0eta,b0eta,currenteta,currentx1,exp(currentlmux1),propa,propb);
+    currenteta = sample_eta(a0eta,b0eta,currenteta,currentx1,exp(currentlmux1),propa,propb);
     //std::cout << "6a\n";
     //currentdelta = sample_delta(a0delta,b0delta,currentdelta,y2,currentx2,propd1,propd2);
     //currentbetay = sample_beta_2(x1x2p,mu0y2,V0y2,currentsigma2y,y2sub,b3sub);
     
-    currentphi = sample_phi(a0delta,b0delta,currentphi,y2,arma::join_rows(exp(currentlmuy),exp(currentlmuy2)),propd1,propd2);
+    currentphi = sample_phi(a0delta,b0delta,currentphi,y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),propd1,propd2);
     
     //std::cout << "5\n";
     
-    currentbetay = sample_betay(mu0y2,V0y2,currentphi,arma::join_rows(exp(currentlmuy),exp(currentlmuy2)),
+    currentbetay = sample_betay(mu0y2,V0y2,currentphi,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
                                 y2,x1x2y1,x1x2y2,currentbetay,betay_var,currentb.col(1),4.0);
     //std::cout << "5b\n";
     
@@ -1350,31 +1368,29 @@ List mcmc_2part_nci6(List data,
     //std::cout << "6b\n";
     
     
-    currentgamma = sample_gamma(mu0x1,V0x1,currentlambda,exp(currentlmux1),
-                                y1,y2,arma::join_rows(exp(currentlmuy),exp(currentlmuy2)),
-                                Za,currentgamma,currentp,currentphi,gamma_var,currentb,4.0);
+    currentgamma = sample_gamma(mu0x1,V0x1,currenteta,exp(currentlmux1),currentx1,Za,currentgamma,gamma_var,currentb.col(0));
     //std::cout << "6c\n";
     
     currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
     
-    currentlambda = sample_lambda(y1,y2,exp(currentlmux1),arma::join_rows(exp(currentlmuy),exp(currentlmuy2)),
-                                  currentp,currentphi,currentlambda,a0l,b0l,propl1,propl2);
-    currentp = calc_p(exp(currentlmux1),currentlambda);
+    currentlambda = sample_lambda(y1,currentx1,currentlambda,a0l,b0l,propl1,propl2);
+    currentp = calc_p(currentx1,currentlambda);
     
-    currentsigma2b[0] = sample_sigma2(a0x,b0x,currentb.col(0));
+    //currentSigmab = sample_Sigmab(d0,D0,currentb);
+    // currentsigma2b[0] = sample_sigma2(a0x,b0x,currentb.col(0));
     // currentsigma2b[1] = sample_sigma2(a0x,b0x,currentb.col(1));
-    for(int j=0;j<2;j++){
-      currentSigmab(j,j) = currentsigma2b[j];
-    }
+    // for(int j=0;j<2;j++){
+    //   currentSigmab(j,j) = currentsigma2b[j];
+    // }
     //std::cout << "6d\n";
     
     if((i>99)&&(i<burn)&&(i%20==0)){
       betay_var = cov(betay.rows(0,i-1));
-      // for(int j=0;j<na;j++){
-      //   if(betay_var(j,j)==0){
-      //     //std::cout << "betax proposal covariance matrix has variance 0\n";
-      //   }
-      // }
+      for(int j=0;j<na;j++){
+        if(betay_var(j,j)==0){
+          std::cout << "betax proposal covariance matrix has variance 0\n";
+        }
+      }
     }
     
     if((i>99)&&(i<burn)&&(i%20==0)){
@@ -1392,41 +1408,40 @@ List mcmc_2part_nci6(List data,
     //                     currentphi,b_var);
     
     //std::cout << "1\n";
-    currentb.col(0) = sample_b1(y1,y2,exp(currentlmux1),arma::join_rows(exp(currentlmuy),exp(currentlmuy2)),
-                            currentb.col(0),currentsigma2b[0],
-                            currentgamma,currentbetay,Za,x1x2y1,x1x2y2,currentlambda,
-                            currentphi,b_var.col(0));
+    // currentb.col(0) = sample_b1(y1,y2,exp(currentlmux1),arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
+    //              currentb.col(0),currentsigma2b[0],
+    //                                            currentgamma,currentbetay,Za,x1x2y1,x1x2y2,currentlambda,
+    //                                            currentphi,b_var.col(0));
     //std::cout << "2\n";
+    currentx1 = sample_x1(currentx1,y1,exp(currentlmux1),currenteta,
+                          x1propa,x1propb,currentlambda);
     
-    currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
-    currentp = calc_p(exp(currentlmux1),currentlambda);
-    //std::cout << "3\n";
+    currentp = calc_p(currentx1,currentlambda);
+        //std::cout << "3\n";
     
-    // currentb.col(1) = sample_b2(y2,arma::join_rows(exp(currentlmuy),exp(currentlmuy2)),
+    // currentb.col(1) = sample_b2(y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
     //              currentb.col(1),currentsigma2b[1],currentbetay,x1x2y1,x1x2y2,currentphi,
-    //              b_var.col(1),currentp); 
-      
+    //              b_var.col(1),currentp);
+    
     //std::cout << "7\n";
     
-    if((i>99)&&(i<burn)&&(i%20==0)){
-      for(int j=0;j<n;j++){
-        b = arma::join_rows(b1.col(j),b2.col(j));
-        b_var(j,0) = var(b1.col(j).rows(0,i-1));
-        b_var(j,1) = var(b2.col(j).rows(0,i-1));
-        
-        //       if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
-        //        bvar0count += 1;
-        //       }
-        // }
-        //   if(bvar0count > 0){
-        //     std::cout << "betax proposal covariance matrix has variance 0\n";
-        //   }
-      }
-    }
+    // if((i>99)&&(i<burn)&&(i%20==0)){
+    //   for(int j=0;j<n;j++){
+    //     b = arma::join_rows(b1.col(j),b2.col(j));
+    //     b_var(j,0) = var(b1.col(j).rows(0,i-1));
+    //     b_var(j,1) = var(b2.col(j).rows(0,i-1));
+    //     
+    //     //       if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
+    //     //        bvar0count += 1;
+    //     //       }
+    //     // }
+    //     //   if(bvar0count > 0){
+    //     //     std::cout << "betax proposal covariance matrix has variance 0\n";
+    //     //   }
+    //   }
+    // }
     
-    
-    b3sub = arma::join_cols(subset(currentb.col(1),indy1),subset(currentb.col(1),indy2));
-    currentx1 = exp(Za*currentgamma + currentb.col(0));
+        //currentx1 = exp(Za*currentgamma + currentb.col(0));
     //std::cout << "7b\n";
     
     //currentsigma2y = sample_sigma2(a0y,b0y,y2sub1,y2sub2,x1x2p1,x1x2p2,currentbetay,b3sub);
@@ -1437,7 +1452,7 @@ List mcmc_2part_nci6(List data,
     
     betay.row(i) = currentbetay.t();
     //betax.row(i) = currentbetax.t();
-    gamma.row(i) = currentgamma.t();
+    gamma.row(i) = currentgamma.t();    
     alpha.row(i) = currentalpha.t();
     sigma2x[i] = currentsigma2x;
     sigma2y[i] = currentsigma2y;
@@ -1458,25 +1473,25 @@ List mcmc_2part_nci6(List data,
     corrb[i] = currentSigmab(0,1)/(sqrt(currentSigmab(0,0)*currentSigmab(1,1)));
     
     
-    if(i >= burn){
-      ind_dic[i-burn] = calc_ind_dic(y1,y2,exp(currentlmux1),currentb,currentlambda,
-                                     currentsigma2y,currentbetay,currentSigmab,x1x2y1,x1x2y2);
-      //std::cout << "mean(ind_dic) = " << (ind_dic) << "\n";
-    }
+    // if(i >= burn){
+    //   ind_dic[i-burn] = calc_ind_dic(y1,y2,exp(currentlmux1),currentb,currentlambda,
+    //                                  currentsigma2y,currentbetay,currentSigmab,x1x2y1,x1x2y2);
+    //   //std::cout << "mean(ind_dic) = " << (ind_dic) << "\n";
+    // }
     
     if(i % 1000==0){
       std::cout << "i= " << i << "\n";
     }
   } 
   
-  meanSigmab.diag() = (mean(sigma2b.rows(burn,nreps-1),0));
-  meanSigmab(0,1)=meanSigmab(1,0)=mean(corrb.subvec(burn,nreps-1))*sqrt(meanSigmab(0,0)*meanSigmab(1,1));
-  
-  mean_dic = calc_ind_dic(y1,y2,trans(mean(mux1.rows(burn,nreps-1),0)),
-                          arma::join_rows(trans(mean(b1.rows(burn,nreps-1),0)),trans(mean(b2.rows(burn,nreps-1),0))),
-                          mean(lambda.subvec(burn,nreps-1)),mean(sigma2y.subvec(burn,nreps-1)),trans(mean(betay.rows(burn,nreps-1),0)),meanSigmab,x1x2y1,x1x2y2);
-  
-  dic = -4*mean(ind_dic) + 2*mean_dic;
+  // meanSigmab.diag() = (mean(sigma2b.rows(burn,nreps-1),0));
+  // meanSigmab(0,1)=meanSigmab(1,0)=mean(corrb.subvec(burn,nreps-1))*sqrt(meanSigmab(0,0)*meanSigmab(1,1));
+  // 
+  // mean_dic = calc_ind_dic(y1,y2,trans(mean(mux1.rows(burn,nreps-1),0)),
+  //                         arma::join_rows(trans(mean(b1.rows(burn,nreps-1),0)),trans(mean(b2.rows(burn,nreps-1),0))),
+  //                         mean(lambda.subvec(burn,nreps-1)),mean(sigma2y.subvec(burn,nreps-1)),trans(mean(betay.rows(burn,nreps-1),0)),meanSigmab,x1x2y1,x1x2y2);
+  // 
+  // dic = -4*mean(ind_dic) + 2*mean_dic;
   //dic = 2*mean_dic;
   //std::cout << "mean(ind_dic) = " << (ind_dic) << "\n mean dic = " << mean_dic;
   
@@ -1488,11 +1503,11 @@ List mcmc_2part_nci6(List data,
     //Named("sigma2x") = sigma2x,
     Named("sigma2y") = sigma2y,
     Named("phi") = phi,
-    //Named("eta")    = eta,
+    Named("eta")    = eta,
     //Named("theta")    = theta,
     //Named("delta")    = delta,
     Named("lambda")    = lambda,
-    //Named("latentx1") = latentx1,
+    Named("latentx1") = latentx1,
     //Named("latentx2") = latentx2,
     Named("b1") = b1,
     Named("b2") = b2,
