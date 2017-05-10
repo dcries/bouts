@@ -1192,9 +1192,9 @@ List mcmc_2part_nci7(List data,
     Named("b2") = b2,
     Named("sigma2b") = sigma2b,
     Named("corrb") = corrb,
-    Named("muy") = muy,
-    Named("mux1") = mux1,
-    Named("mux2") = mux2,
+    //Named("muy") = muy,
+    //Named("mux1") = mux1,
+    //Named("mux2") = mux2,
     Named("dic") = dic);
 } 
 
