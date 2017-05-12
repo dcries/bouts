@@ -1314,11 +1314,9 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
     
     for(i in 1:nsim){
       #corresponds to nci model with correlated re in mu and lambda (normal)
-      #cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
-      #bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
-      b <- matrix(0,nrow=n,ncol=2)
-      b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
-      b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
+      bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
+      mvrnorm(n,c(0,0),bcovmat)
       
       #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
@@ -1326,8 +1324,8 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       
       x1 <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #print(summary(x1))
-      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(x1)*betay[i,ncol(Zb)+1] + b[,2]
-      x2 <- ((muy)^(-2))*gamma(1+1/phi[i])
+      muy <- Zb%*%(betay[i,1:ncol(Zb)]) + b[,2]
+      x2 <- ((muy)^(2))*gamma(1+1/phi[i])
       y1 <- matrix(0,ncol=2,nrow=n)
       
       for(j in 1:n){
@@ -1335,8 +1333,8 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
         p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
         
       }
-      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,1])*betay[i,ncol(Zb)+1]+ b[,2])^(-2)
-      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + sqrt(y1[,2])*betay[i,ncol(Zb)+1]+ b[,2])^(-2)
+      muy1 <- (Zb%*%(betay[i,1:ncol(Zb)]) + b[,2])^(2)
+      muy2 <- (Zb%*%(betay[i,1:ncol(Zb)]) + b[,2])^(2)
       check0 <- y1
       check0[check0 > 0] <- 1
       

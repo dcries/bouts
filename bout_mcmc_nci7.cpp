@@ -1077,6 +1077,7 @@ List mcmc_2part_nci7(List data,
           std::cout << "betax proposal covariance matrix has variance 0\n";
         }
        }
+       //std::cout << "var = " << sqrt(betay_var.diag()) << "\n";
     }
 
     if((i>99)&&(i<burn)&&(i%20==0)){
@@ -1104,9 +1105,12 @@ List mcmc_2part_nci7(List data,
     currentp = calc_p(exp(currentlmux1),currentlambda);
     //std::cout << "3\n";
     
-    // currentb.col(1) = sample_b2(y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
-    //              currentb.col(1),currentsigma2b[1],currentbetay,x1x2y1,x1x2y2,currentphi,
-    //              b_var.col(1),currentp);
+    currentb.col(1) = sample_b2(y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
+                 currentb.col(1),currentsigma2b[1],currentbetay,x1x2y1,x1x2y2,currentphi,
+                 b_var.col(1),currentp);
+    
+    currentlmuy = calc_lmu(x1x2y1,currentbetay,currentb.col(1));
+    currentlmuy2 = calc_lmu(x1x2y2,currentbetay,currentb.col(1));
     
     //std::cout << "7\n";
     

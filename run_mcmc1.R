@@ -87,6 +87,7 @@ mcmc6 = mcmc_2part_nci6(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 mcmc7 = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=20000,burn=10000)
 mcmc7b = mcmc_2part_nci7b(data=data,init=init,priors=prior,nrep=20000,burn=10000)
+mcmc7c = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=20000,burn=10000)
 
 mcmc8 = mcmc_2part_nci8(data=data,init=init,priors=prior,nrep=100000,burn=50000)
 mcmc8b = mcmc_2part_nci8b(data=data,init=init,priors=prior,nrep=100000,burn=50000)
@@ -105,13 +106,6 @@ plot(apply(mcmc$b1,2,function(x){return((length(unique(x))-1)/length(x))}))
 (length(unique(mcmc$lambda))-1)/length(mcmc$lambda)
 (length(unique(mcmc$delta))-1)/length(mcmc$delta)
 (length(unique(mcmc$phi))-1)/length(mcmc$phi)
-
-
-hist(colMeans(mcmc$latentx1))
-#hist(colMeans(mcmc$latentx2))
-
-plot(mcmc$latentx1[,which.max(rowMeans(data$y1))])
-#plot(mcmc$latentx2[,which.max(rowMeans(data$y2))])
 
 plot(mcmc$gamma[,1],type="l")
 plot(mcmc$gamma[,2],type="l")
@@ -190,7 +184,7 @@ assessln5b <- pp_assess(mcmc5b,data$Zb,400,"5b",y1,y2,burn=10000)
 assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=10000)
 
 assessln7 <- pp_assess(mcmc7,data$Zb,400,"7",y1,y2,burn=10000)
-assessln7b <- pp_assess(mcmc7b,data$Zb,2000,"7b",y1,y2,burn=50000)
+assessln7b <- pp_assess(mcmc7b,data$Zb,400,"7b",y1,y2,burn=10000)
 assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
 assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
 
@@ -231,7 +225,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln7$out
+assess=assessln2c2$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))

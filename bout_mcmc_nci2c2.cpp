@@ -783,7 +783,7 @@ double log_ql(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
     //ll += R::dgamma(x1,eta,1.0/(eta/mux1),true);
     //ll += R::dgamma(x2,theta,1.0/(theta/mux2),true);
     ////std::cout << dmvnrm_arma(currentb,zs,Sigmab,true) << "\n";
-    ll += R::dnorm(currentb,0,Sigmab,true);
+    ll += R::dnorm(currentb,0,sqrt(Sigmab),true);
     //}
     
     return ll;
@@ -813,7 +813,7 @@ double log_ql(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
       muy1prop = 0.0;
       muy2prop = arma::zeros(2);
       //std::cout << "b\n";
-      propb = R::rnorm(currentb[i],pow(2.4,2)*Sigma_1[i]);
+      propb = R::rnorm(currentb[i],2.4*sqrt(Sigma_1[i]));
       //std::cout << "c\n";
       
       

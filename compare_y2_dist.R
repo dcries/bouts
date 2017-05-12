@@ -31,6 +31,9 @@ par = c(a,b)
 ks.test(y,"pweibull",a,b)
 weibull.optim<-optim(par=par,fn=ll.weibull,dat=y)
 
+qqplot(qweibull(ppoints(500),a,b),y);qqline(y,distribution=function(p)qweibull(p,a,b))
+plot(ecdf(y));lines(ecdf(rweibull(10000,a,b)),lty=3)
+
 
 alp <- mean(y)^2/var(y)
 bet <- mean(y)/var(y)
