@@ -1,6 +1,6 @@
 #need dgenpois(arma::vec x, arma::vec mu, double lambda, bool logd=true) sourced
 
-pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
+pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,weights,burn=1){
   
   ind <- sample(burn:nrow(mcmcout$gamma),nsim)
   n <- nrow(Zb)
@@ -854,6 +854,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       b <- matrix(0,nrow=n,ncol=2)
       b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
       b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
+      b[which(b[,1]>6),1] <- 6
       
       tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
@@ -1136,6 +1137,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       b[,1] <- rnorm(n,0,sqrt(sigma2b[i,1]))
       b[,2] <- rnorm(n,0,sqrt(sigma2b[i,2]))
       
+      b[which(b[,1]>6),1] <- 6
       #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)
       
@@ -1147,6 +1149,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       y1 <- matrix(0,ncol=2,nrow=n)
       
       for(j in 1:n){
+        #print(x1[j]);print(b[j,1])
         y1[j,] <- rgenpois(2,x1[j],lambda[i])
         p[j] <- 1-dgenpois(0,x1[j],lambda[i],FALSE)
         
@@ -1193,7 +1196,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       
       x3 <- 30*x1 + p*x2
       pcomply[i] <- sum(x3>450/7)/n
-      pcomply2[i] <- sum(x3>450/5)/n
+      pcomply2[i] <- sum((x3>450/7)*weights)/sum(weights)
       
       kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
     }
@@ -1316,7 +1319,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,burn=1){
       #corresponds to nci model with correlated re in mu and lambda (normal)
       cov1 = sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i]
       bcovmat <- matrix(c(sigma2b[i,1],cov1,cov1,sigma2b[i,2]),ncol=2,byrow=T)
-      mvrnorm(n,c(0,0),bcovmat)
+      b <- mvrnorm(n,c(0,0),bcovmat)
       
       #tempmean <- exp(as.numeric((Zb%*%gamma[i,]+b[,1])))
       #ind <- which(tempmean*(1-lambda[i]+m[i,]*lambda[i]) < 0)

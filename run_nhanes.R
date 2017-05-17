@@ -12,25 +12,26 @@ source('~/Documents/github/bouts/rgenpois.R')
 
 setwd("C:\\Users\\dcries\\github\\bouts\\data")
 setwd("~/Documents/github/bouts/data/")
-bouts <- read.csv("finalbouts2rep.csv")
-pams <- read.csv("FinalPAMSDataSetNew.csv")
+#bouts <- read.csv("finalbouts2rep.csv")
+#pams <- read.csv("FinalPAMSDataSetNew.csv")
+nhanes <- read.csv("NHANES_use.csv")
 
 #Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% select(age,gender,bmi,smoke,education,black,hispanic)
-weights <- bouts %>% group_by(id) %>% filter(rep==1)
-weights <- unlist(weights[,"B1BaseWeight"])
-Za <- bouts %>% group_by(id) %>% filter(rep==1)
+#weights <- nhanes %>% group_by(id) %>% filter(rep==1)
+#weights <- unlist(weights[,"B1BaseWeight"])
+Za <- nhanes[!duplicated(nhanes$id),]
 Za <- Za[,c("age","gender","bmi","smoke","education","black","hispanic")]
-Za$education[Za$education <=3 ] <- 0
-Za$education[Za$education >3 ] <- 1
-Za$hispanic <- abs(Za$hispanic-2)
+#Za$education[Za$education <=3 ] <- 0
+#Za$education[Za$education >3 ] <- 1
+#Za$hispanic <- abs(Za$hispanic-2)
 
 Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic),data=Za)
 #Za[,2] <- scale(Za[,2])
 #Za[,4] <- scale(Za[,4])
 
-new <- bouts[,c("id","rep","nbouts","totalexcess")]
-newm <- melt(new,id.vars=c("id","rep"))
-newc <- cast(newm,id~rep+variable)
+new <- nhanes[,c("id","rep.1","modvigbouts","modvigmetsb")]
+newm <- melt(new,id.vars=c("id","rep.1"))
+newc <- cast(newm,id~rep.1+variable)
 y1=as.matrix(newc[,c(2,4)]);y2=as.matrix(newc[,c(3,5)])
 #x1tune=rowMeans(y1)
 #x1tune[x1tune==0] <- 1
@@ -48,7 +49,7 @@ data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
 init = list(currentbetay=c(1,0,0,0,0,0,0,0,0),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0,0,0,0.48),currentalpha=rep(0,ncol(data$Zb)),
             currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
-            currentu=rep(0,nrow(data$y1)),gammatune=rep(0.000001,ncol(Za)),
+            currentu=rep(0,nrow(data$y1)),gammatune=rep(0.001,ncol(Za)),
             propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
             x1propa=x1propa,x1propb=x1propb,
             currenttheta=rep(1,1),betaxtune=c(1,rep(0.01,ncol(Za)-1),1), 
@@ -71,31 +72,13 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
              a0delta=1,b0delta=1, d0=4, D0=diag(2),adirich=rep(1,ncomp),
              D02=diag(3))
 
-mcmc1 = mcmc_2part_nci1(data=data,init=init,priors=prior,nrep=25000,burn=10000)
-#mcmc2 = mcmc_2part_nci2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
- mcmc3 = mcmc_2part_nci3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-# mcmc4 = mcmc_2part_nci4(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
-mcmc2b = mcmc_2part_nci2b(data=data,init=init,priors=prior,nrep=25000,burn=10000)
-mcmc2c = mcmc_2part_nci2c(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-mcmc2d = mcmc_2part_nci2d(data=data,init=init,priors=prior,nrep=6000,burn=2000)
+mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=10000,burn=5000)
+mcmc = mcmc_2part_nci5(data=data,init=init,priors=prior,nrep=10000,burn=5000)
+mcmc = mcmc_2part_nci5b(data=data,init=init,priors=prior,nrep=10000,burn=5000)
 
-mcmc2c2 = mcmc_2part_nci2c2(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-mcmc2c3 = mcmc_2part_nci2c3(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-
-mcmc5 = mcmc_2part_nci5(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-mcmc5b = mcmc_2part_nci5b(data=data,init=init,priors=prior,nrep=20000,burn=10000)
-
-mcmc6 = mcmc_2part_nci6(data=data,init=init,priors=prior,nrep=6000,burn=2000)
-
-mcmc7 = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=100000,burn=20000)
 mcmc7b = mcmc_2part_nci7b(data=data,init=init,priors=prior,nrep=20000,burn=10000)
-mcmc7c = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=20000,burn=10000)
 
-mcmc8 = mcmc_2part_nci8(data=data,init=init,priors=prior,nrep=100000,burn=50000)
-mcmc8b = mcmc_2part_nci8b(data=data,init=init,priors=prior,nrep=100000,burn=50000)
-
-mcmc9 = mcmc_2part_nci9(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 #acceptance rates
 apply(mcmc$gamma,2,function(x){return(length(unique(x))/length(x))}) 
@@ -183,26 +166,11 @@ ggplot(subset(cis,q50<4), aes(x=name,y=q50, ymin=q025, ymax=q975,colour=Signific
 # ggplot(data=may,aes(x=value))+geom_histogram() + facet_wrap(~X2,scales="free") + xlab(expression(gamma))+theme_bw()
 #-------------------------------------------------------------
 
-assessln <- pp_assess(mcmc1,data$Zb,1000,1,burn=10000)
-# assessln2 <- pp_assess(mcmc2,data$Zb,200,2,burn=2000)
- assessln3 <- pp_assess(mcmc3,data$Zb,400,3,y1,y2,burn=2000)
-# assessln4 <- pp_assess(mcmc4,data$Zb,200,4)
-assessln2b <- pp_assess(mcmc2b,data$Zb,1000,"2b",burn=10000)
-assessln2c <- pp_assess(mcmc2c,data$Zb,400,"2c",y1,y2,burn=2000)
-assessln2d <- pp_assess(mcmc2d,data$Zb,400,"2d",y1,y2,burn=2000)
+assessln5 <- pp_assess(mcmc,data$Zb,300,"5",y1,y2,weights,burn=5000)
 
-assessln2c2 <- pp_assess(mcmc2c2,data$Zb,400,"2c2",y1,y2,burn=2000)
-assessln2c3 <- pp_assess(mcmc2c3,data$Zb,400,"2c3",y1,y2,burn=2000)
-
-assessln5 <- pp_assess(mcmc5,data$Zb,400,"5",y1,y2,burn=2000)
-assessln5b <- pp_assess(mcmc5b,data$Zb,400,"5b",y1,y2,burn=10000)
-
-assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=10000)
-
-assessln7 <- pp_assess(mcmc7,data$Zb,1000,"7",y1,y2,weights,burn=20000)
+assessln7 <- pp_assess(mcmc,data$Zb,300,"7",y1,y2,weights,burn=5000)
 assessln7b <- pp_assess(mcmc7b,data$Zb,400,"7b",y1,y2,weights,burn=10000)
-assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
-assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
+
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -241,7 +209,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln7$out
+assess=assessln5$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))
@@ -274,4 +242,4 @@ names(mcomply)[1] <- "Weight"
 ci <- quantile(comply$No,probs=c(0.025,0.975))
 wci <- quantile(comply$Yes,probs=c(0.025,0.975))
 qplot(data=mcomply,x=value,fill=Weight,geom="density",alpha=I(0.5)) + geom_vline(xintercept=ci,linetype=2,colour="red") + 
-  geom_vline(xintercept=wci, linetype=2, colour="blue") + theme_bw()
+  geom_vline(xintercept=wci, linetype=2, colour="blue") + ggtitle("Distribution of Compliance Rates to PAG for Entire Population") + theme_bw()

@@ -750,6 +750,48 @@ double sample_lambda(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
   return out;
 }
 
+double log_ql2(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
+               arma::vec p,double phi,double lambda, double a0l, double b0l){
+  double out = 0.0;
+  int k = y1.n_cols;
+  int n = y1.n_rows;
+  for(int i=0;i<n;i++){
+    for(int j=0;j<k;j++){
+      out += dgenpois(y1(i,j),x1[i],lambda);
+      if(y2(i,j)==0){
+        out += log(1-p[i]);
+      }
+      else{
+        out += log(p[i]) + R::dlnorm(y2(i,j),muy2(i,j),sqrt(phi),true);
+        //out += log(p[i]) + R::dweibull(y2(i,j),phi,muy2(i,j),true);
+      }
+    }
+    
+  }
+  out += R::dunif(lambda,-0.5,1,true);
+  return out;
+}
+
+//// [[Rcpp::export]]
+double sample_lambda2(arma::mat y1, arma::mat y2, arma::vec x1, arma::mat muy2,
+                      arma::vec p, double phi, double lambda, double a0l, double b0l,
+                      double propl1, double propl2){
+  double out = lambda;
+  double proposal = R::runif(-0.5,1);
+  double lacceptprob;
+  int n = x1.size();
+  arma::vec pprop(n);
+  pprop = calc_p(x1,proposal);
+  
+  lacceptprob = log_ql2(y1,y2,x1,muy2,pprop,phi,proposal,a0l,b0l) - log_ql2(y1,y2,x1,muy2,p,phi,lambda,a0l,b0l) -
+    R::dunif(proposal,-0.5,1,true) + R::dunif(lambda,-0.5,1,true);
+  
+  if(log(R::runif(0,1))<lacceptprob){
+    out = proposal;
+  }
+  return out;
+}
+
 //// [[Rcpp::export]]
 arma::mat sample_Sigmab(int d0, arma::mat D0, arma::mat currentb){
   int n = currentb.n_rows;
@@ -1261,7 +1303,7 @@ List mcmc_2part_nci5(List data,
     
     currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
     
-    currentlambda = sample_lambda(y1,y2,exp(currentlmux1),arma::join_rows(currentlmuy,currentlmuy2),
+    currentlambda = sample_lambda2(y1,y2,exp(currentlmux1),arma::join_rows(currentlmuy,currentlmuy2),
                                  currentp,currentsigma2y,currentlambda,a0l,b0l,propl1,propl2);
     currentp = calc_p(exp(currentlmux1),currentlambda);
     

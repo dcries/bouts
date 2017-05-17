@@ -3,12 +3,13 @@ library(reshape)
 #library(ggplot2)
 #library(gridExtra)
 
-Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci7.cpp')
+Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci7c.cpp')
 source('/home/dcries/bouts/pp_assess.R')
 source('/home/dcries/bouts/rgenpois.R')
 
 #setwd("C:\\Users\\dcries\\github\\bouts\\data")
 bouts <- read.csv("/home/dcries/bouts/data/finalbouts2rep.csv")
+
 weights <- bouts %>% group_by(id) %>% filter(rep==1)
 weights <- unlist(weights[,"B1BaseWeight"])
 Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% select(age,gender,bmi,smoke,education,black,hispanic)
@@ -35,25 +36,25 @@ x1propa <- y1rowmean^2/y1rowvar
 # muy 4.01,.06,.002
 #currentalpha=c(-.32,0.47,.001)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
-init = list(currentbetay=c(1,3,-4,5,-7,0,2,8,2),
-            currentgamma=c(1,0,0,0,0,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
+init = list(currentbetay=c(1,0,0,0,0,0,0,0),
+            currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             gammatune=rep(0.00000001,ncol(Za)),propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
-            x1propa=x1propa,x1propb=x1propb,betaxtune=c(1,rep(0.01,ncol(Za)-1),1), 
-            propax2=1,propbx2=0.5,currentlambda=.1,propl1=1,propl2=1,
-            propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
-            currentSigmab=diag(2)*.01, currentsigma2b=0.01,currentphi=2.89)
+            x1propa=x1propa,x1propb=x1propb,betaxtune=c(1,rep(0.01,ncol(Za)-1)), 
+            propax2=1,propbx2=0.5,currentlambda=.5,propl1=1,propl2=1,
+            propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.0001,0.0001),
+            currentSigmab=diag(2)*1, currentsigma2b=0.01,currentphi=.89)
 
-prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
-             mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
+prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
+             mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)),V0x1=100*diag(ncol(Za)),
              V0x2=100*diag(ncol(Za)+1),V0a=100*diag(ncol(data$Zb)),a0eta=1,b0eta=1,
              a0x=1,b0x=1,a0y=1,b0y=1,
              a0theta=1,b0theta=1,
              a0l=1,b0l=1,
              a0delta=1,b0delta=1, d0=4, D0=diag(2))
 
-mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=100000,burn=20000)
-assessln <- pp_assess(mcmc,data$Zb,1000,"7",y1,y2,weights,burn=20000)
+mcmc = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=100000,burn=20000)
+assessln <- pp_assess(mcmc,data$Zb,1000,"7c",y1,y2,weights,burn=20000)
 
-save(mcmc,file="boutsmcmc2.RData")
-save(assessln,file="assessmcmc2.RData")
+save(mcmc,file="boutsmcmc_b.RData")
+save(assessln,file="assessmcmc_b.RData")

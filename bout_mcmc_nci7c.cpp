@@ -581,11 +581,12 @@ double log_qb(arma::rowvec y1, arma::rowvec y2, double muy, arma::vec muy2, doub
       ll += log(p0) + R::dweibull(y2[i],phi,muy2[i],true);
       
     }
+    //std::cout << dgenpois(y1[i],muy,lambdau,true) << " " << log(p0) + R::dweibull(y2[i],phi,muy2[i],true) << "\n";
   }
   
   //ll += R::dgamma(x1,eta,1.0/(eta/mux1),true);
   //ll += R::dgamma(x2,theta,1.0/(theta/mux2),true);
-  ////std::cout << dmvnrm_arma(currentb,zs,Sigmab,true) << "\n";
+  //std::cout << dmvnrm_arma(currentb,zs,Sigmab,true) << " currentb = " << currentb << "Sigmab = " << Sigmab << "\n";
   ll += arma::accu(dmvnrm_arma(currentb,zs,Sigmab,true));
   //}
   
@@ -642,6 +643,7 @@ arma::mat sample_b(arma::mat y1, arma::mat y2,arma::vec muy1,arma::mat muy2,arma
     lacceptprob = log_qb(y1.row(i),y2.row(i),exp(muy1prop),pow(muy2prop,2.0),lambda,phi,propb,Sigmab) - 
       log_qb(y1.row(i),y2.row(i),muy1[i],muy2.row(i).t(),lambda,phi,currentb.row(i).t(),Sigmab);
     //std::cout << "e\n";
+    //std::cout << exp(lacceptprob) << "\n";
     if(log(R::runif(0,1)) < lacceptprob){
       out.row(i) = propb.t();
     }
@@ -1070,12 +1072,12 @@ List mcmc_2part_nci7c(List data,
     currentp = calc_p(exp(currentlmux1),currentlambda);
     //std::cout << "6d\n";
     
-    //currentSigmab = sample_Sigmab(d0,D0,currentb);
-    currentsigma2b[0] = sample_sigma2(a0x,b0x,currentb.col(0));
-    currentsigma2b[1] = sample_sigma2(a0x,b0x,currentb.col(1));
-    for(int j=0;j<2;j++){
-      currentSigmab(j,j) = currentsigma2b[j];
-    }
+    currentSigmab = sample_Sigmab(d0,D0,currentb);
+    // currentsigma2b[0] = sample_sigma2(a0x,b0x,currentb.col(0));
+    // currentsigma2b[1] = sample_sigma2(a0x,b0x,currentb.col(1));
+    // for(int j=0;j<2;j++){
+    //   currentSigmab(j,j) = currentsigma2b[j];
+    // }
     //std::cout << "6d\n";
     
     if((i>99)&&(i<burn)&&(i%20==0)){
@@ -1109,8 +1111,7 @@ List mcmc_2part_nci7c(List data,
     //                                            currentphi,b_var.col(0));
     //std::cout << "2\n";
     
-    currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
-    currentp = calc_p(exp(currentlmux1),currentlambda);
+
     //std::cout << "3\n";
     
     // currentb.col(1) = sample_b2(y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
@@ -1118,23 +1119,28 @@ List mcmc_2part_nci7c(List data,
     //              b_var.col(1),currentp);
     
     //std::cout << "7\n";
+    currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
+    currentp = calc_p(exp(currentlmux1),currentlambda);
     
-    // if((i>99)&&(i<burn)&&(i%20==0)){
-    //   for(int j=0;j<n;j++){
-    //     b = arma::join_rows(b1.col(j),b2.col(j));
-    //     // b_var(j,0) = var(b1.col(j).rows(0,i-1));
-    //     // b_var(j,1) = var(b2.col(j).rows(0,i-1));
-    //     
-    //     b_var.slice(j) = cov(b.rows(0,i-1));
-    //   //   bvar0count = 0;
-    //   //   if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
-    //   //          bvar0count += 1;
-    //   //   }
-    //   // }
-    //   // if(bvar0count > 0){
-    //   //       std::cout << "betax proposal covariance matrix has variance 0\n";
-    //    }
-    // }
+    currentlmuy = calc_lmu(x1x2y1,currentbetay,currentb.col(1));
+    currentlmuy2 = calc_lmu(x1x2y2,currentbetay,currentb.col(1));
+    
+    if((i>99)&&(i<burn)&&(i%20==0)){
+      for(int j=0;j<n;j++){
+        b = arma::join_rows(b1.col(j),b2.col(j));
+        // b_var(j,0) = var(b1.col(j).rows(0,i-1));
+        // b_var(j,1) = var(b2.col(j).rows(0,i-1));
+
+        b_var.slice(j) = cov(b.rows(0,i-1));
+        bvar0count = 0;
+        if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
+               bvar0count += 1;
+        }
+      }
+      if(bvar0count > 0){
+            std::cout << "b proposal covariance matrix has variance 0\n";
+       }
+    }
     
     
     b3sub = arma::join_cols(subset(currentb.col(1),indy1),subset(currentb.col(1),indy2));
