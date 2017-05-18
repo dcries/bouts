@@ -1,5 +1,6 @@
 library(dplyr)
 library(reshape)
+library(MASS)
 #library(ggplot2)
 #library(gridExtra)
 
@@ -12,7 +13,7 @@ bouts <- read.csv("/home/dcries/bouts/data/finalbouts2rep.csv")
 
 weights <- bouts %>% group_by(id) %>% filter(rep==1)
 weights <- unlist(weights[,"B1BaseWeight"])
-Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% select(age,gender,bmi,smoke,education,black,hispanic)
+Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% dplyr::select(age,gender,bmi,smoke,education,black,hispanic)
 Za$education[Za$education <=3 ] <- 0
 Za$education[Za$education >3 ] <- 1
 Za$hispanic <- abs(Za$hispanic-2)

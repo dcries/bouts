@@ -897,7 +897,8 @@ List mcmc_2part_nci7(List data,
                      List init, 
                      List priors, 
                      const int nreps, 
-                     const int burn=1000){
+                     const int burn=1000,
+                     const int thin=1){
   
   //const double infty = std::numeric_limits<double>::infinity();
   //std::numeric_limits<double>::infinity()
@@ -992,30 +993,33 @@ List mcmc_2part_nci7(List data,
   //std::cout << "4\n";
   
   int nbre = currentb.n_cols;
-  
+  int keep = (nreps-burn)/thin;
   //storage
-  arma::mat betay(nreps,mu0y2.size());
-  arma::mat gamma(nreps,nb);
-  arma::vec sigma2x(nreps);
-  arma::vec sigma2y(nreps);
-  arma::vec eta(nreps);
-  arma::vec lambda(nreps);
-  arma::mat latentx1(nreps,n);
-  arma::mat latentx2(nreps,n);
-  arma::mat muy(nreps,n);
-  arma::mat mux1(nreps,n);
-  arma::mat mux2(nreps,n);
-  //arma::mat pg0(nreps,n);
-  arma::mat b1(nreps,n);
-  arma::mat b2(nreps,n);
-  arma::mat sigma2b(nreps,nbre);
-  arma::vec corrb(nreps);
-  arma::mat m(nreps,n);
-  arma::vec ind_dic(nreps-burn);
-  arma::vec phi(nreps);
+  arma::mat betay(keep,mu0y2.size());
+  arma::mat gamma(keep,nb);
+  arma::vec sigma2x(keep);
+  arma::vec sigma2y(keep);
+  arma::vec eta(keep);
+  arma::vec lambda(keep);
+  arma::mat latentx1(keep,n);
+  arma::mat latentx2(keep,n);
+  arma::mat muy(keep,n);
+  arma::mat mux1(keep,n);
+  arma::mat mux2(keep,n);
+  //arma::mat pg0(keep,n);
+  arma::mat b1(keep,n);
+  arma::mat b2(keep,n);
+  arma::mat sigma2b(keep,nbre);
+  arma::vec corrb(keep);
+  arma::mat m(keep,n);
+  arma::vec phi(keep);
   double mean_dic;
   double dic;
   
+  arma::mat betayburn(burn,mu0y2.size());
+  arma::mat gammaburn(burn,nb);
+  arma::mat b1burn(burn,n);
+  arma::mat b2burn(burn,n);
   //std::cout << "5\n";
   
   arma::mat x1x2;
@@ -1071,6 +1075,7 @@ List mcmc_2part_nci7(List data,
   currentlmuy = calc_lmu(x1x2y1,currentbetay,currentb.col(1));
   currentlmuy2 = calc_lmu(x1x2y2,currentbetay,currentb.col(1));
   
+  int ind = 0;
   for(int i=0;i<nreps;i++){
     //std::cout << "4\n";
     
@@ -1084,7 +1089,7 @@ List mcmc_2part_nci7(List data,
     //std::cout << "5\n";
     
     currentbetay = sample_betay(mu0y2,V0y2,currentphi,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
-                                y2,x1x2y1,x1x2y2,currentbetay,betay_var,currentb.col(1),4.0);
+                                y2,x1x2y1,x1x2y2,currentbetay,betay_var,currentb.col(1),10.0);
     //std::cout << "5b\n";
     
     currentlmuy = calc_lmu(x1x2y1,currentbetay,currentb.col(1));
@@ -1095,7 +1100,7 @@ List mcmc_2part_nci7(List data,
     
     currentgamma = sample_gamma(mu0x1,V0x1,currentlambda,exp(currentlmux1),
                                 y1,y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
-                                Za,currentgamma,currentp,currentphi,gamma_var,currentb,4.0);
+                                Za,currentgamma,currentp,currentphi,gamma_var,currentb,1.0);
     //std::cout << "6c\n";
     
     currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
@@ -1113,7 +1118,7 @@ List mcmc_2part_nci7(List data,
     //std::cout << "6d\n";
     
     if((i>99)&&(i<burn)&&(i%20==0)){
-      betay_var = cov(betay.rows(0,i-1));
+      betay_var = cov(betayburn.rows(0,i-1));
        for(int j=0;j<na;j++){
         if(betay_var(j,j)==0){
           std::cout << "betax proposal covariance matrix has variance 0\n";
@@ -1123,7 +1128,7 @@ List mcmc_2part_nci7(List data,
     }
 
     if((i>99)&&(i<burn)&&(i%20==0)){
-      gamma_var = cov(gamma.rows(0,i-1));
+      gamma_var = cov(gammaburn.rows(0,i-1));
       for(int j=0;j<na;j++){
         if(gamma_var(j,j)==0){
           std::cout << "gamma proposal covariance matrix has variance 0\n";
@@ -1158,17 +1163,16 @@ List mcmc_2part_nci7(List data,
     
     if((i>99)&&(i<burn)&&(i%20==0)){
       for(int j=0;j<n;j++){
-        b = arma::join_rows(b1.col(j),b2.col(j));
-        b_var(j,0) = var(b1.col(j).rows(0,i-1));
-        b_var(j,1) = var(b2.col(j).rows(0,i-1));
+        //b = arma::join_rows(b1.col(j),b2.col(j));
+        b_var(j,0) = var(b1burn.col(j).rows(0,i-1));
+        b_var(j,1) = var(b2burn.col(j).rows(0,i-1));
         
-        //       if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
-        //        bvar0count += 1;
-        //       }
-        // }
-        //   if(bvar0count > 0){
-        //     std::cout << "betax proposal covariance matrix has variance 0\n";
-        //   }
+              // if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
+              //  bvar0count += 1;
+              // }
+          // if(bvar0count > 0){
+          //   std::cout << "betax proposal covariance matrix has variance 0\n";
+          // }
       }
     }
     
@@ -1180,26 +1184,33 @@ List mcmc_2part_nci7(List data,
     //currentsigma2y = sample_sigma2(a0y,b0y,y2sub1,y2sub2,x1x2p1,x1x2p2,currentbetay,b3sub);
     
     //std::cout << "8\n";
+    if(i < burn){
+      betayburn.row(i) = currentbetay.t();
+      gammaburn.row(i) = currentgamma.t();    
+      b1burn.row(ind) = currentb.col(0).t();
+      b2burn.row(ind) = currentb.col(1).t();
+    }
+    if((i >= burn) && (i%thin==0) ){
+      betay.row(ind) = currentbetay.t();
+      gamma.row(ind) = currentgamma.t();    
+      sigma2x[ind] = currentsigma2x;
+      sigma2y[ind] = currentsigma2y;
+      eta[ind]      = currenteta;
+      lambda[ind]      = currentlambda;
+      phi[ind]      = currentphi;
+      latentx1.row(ind) = currentx1.t();
+      latentx2.row(ind) = currentx2.t();
+      muy.row(ind) = (currentlmuy.t());
+      mux1.row(ind) = exp(currentlmux1.t());
+      mux2.row(ind) = exp(currentlmux2.t());
+      //pg0.row(i) = currentp.t();
+      b1.row(ind) = currentb.col(0).t();
+      b2.row(ind) = currentb.col(1).t();
+      sigma2b.row(ind) = (currentSigmab.diag()).t();
+      corrb[ind] = currentSigmab(0,1)/(sqrt(currentSigmab(0,0)*currentSigmab(1,1)));
+      ind++;
+    }
     
-    
-    
-    betay.row(i) = currentbetay.t();
-    gamma.row(i) = currentgamma.t();    
-    sigma2x[i] = currentsigma2x;
-    sigma2y[i] = currentsigma2y;
-    eta[i]      = currenteta;
-    lambda[i]      = currentlambda;
-    phi[i]      = currentphi;
-    latentx1.row(i) = currentx1.t();
-    latentx2.row(i) = currentx2.t();
-    muy.row(i) = (currentlmuy.t());
-    mux1.row(i) = exp(currentlmux1.t());
-    mux2.row(i) = exp(currentlmux2.t());
-    //pg0.row(i) = currentp.t();
-    b1.row(i) = currentb.col(0).t();
-    b2.row(i) = currentb.col(1).t();
-    sigma2b.row(i) = (currentSigmab.diag()).t();
-    corrb[i] = currentSigmab(0,1)/(sqrt(currentSigmab(0,0)*currentSigmab(1,1)));
 
     
     // if(i >= burn){

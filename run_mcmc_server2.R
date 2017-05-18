@@ -17,6 +17,7 @@ Za$education[Za$education >3 ] <- 1
 Za$hispanic <- abs(Za$hispanic-2)
 
 Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic),data=Za)
+#Za <- matrix(1,ncol=1,nrow=nrow(Za))
 
 
 new <- bouts[,c("id","rep","nbouts","totalexcess")]
@@ -34,15 +35,29 @@ x1propa <- y1rowmean^2/y1rowvar
 #mom estimator for et, alpha=407, beta=329
 # muy 4.01,.06,.002
 #currentalpha=c(-.32,0.47,.001)
+
+Z1 <- rbind(data$Za,data$Za)
+y1a <- c(y1)
+m7 <- glm(y1a ~ as.matrix(Z1)+0,family=poisson)
+valsg <- confint(m7,level=0.999)
+
+Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
+names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
+y = y2[y2>0]
+y1p = y1[y1>0]
+m6 <- glm(y~as.matrix(Z)+log(y1p)+0,family=Gamma(link=power(lambda=1/2)))
+valsb <- confint(m6,level=0.999)
+
+
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
-init = list(currentbetay=c(1,3,-4,5,-7,0,2,8,2),
-            currentgamma=c(1,0,0,0,0,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
+init = list(currentbetay=valsb[,1],
+            currentgamma=valsg[,1],currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             gammatune=rep(0.00000001,ncol(Za)),propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
-            x1propa=x1propa,x1propb=x1propb,betaxtune=c(1,rep(0.01,ncol(Za)-1),1), 
+            x1propa=x1propa,x1propb=x1propb,betaxtune=c(.1,rep(0.01,ncol(Za)-1),.1), 
             propax2=1,propbx2=0.5,currentlambda=.1,propl1=1,propl2=1,
             propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
-            currentSigmab=diag(2)*.01, currentsigma2b=0.01,currentphi=2.89)
+            currentSigmab=diag(2)*1, currentsigma2b=1,currentphi=2.89)
 
 prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
@@ -52,8 +67,9 @@ prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol
              a0l=1,b0l=1,
              a0delta=1,b0delta=1, d0=4, D0=diag(2))
 
-mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=100000,burn=20000)
-assessln <- pp_assess(mcmc,data$Zb,1000,"7",y1,y2,weights,burn=20000)
-
+mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=300000,burn=50000,thin=1000)
 save(mcmc,file="boutsmcmc2.RData")
+
+assessln <- pp_assess(mcmc,data$Zb,1000,"7",y1,y2,weights,burn=0)
+
 save(assessln,file="assessmcmc2.RData")
