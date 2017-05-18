@@ -39,14 +39,14 @@ x1propa <- y1rowmean^2/y1rowvar
 Z1 <- rbind(data$Za,data$Za)
 y1a <- c(y1)
 m7 <- glm(y1a ~ as.matrix(Z1)+0,family=poisson)
-valsg <- confint(m7,level=0.999)
+valsg <- confint.default(m7,level=0.999)
 
 Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
 names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
 y = y2[y2>0]
 y1p = y1[y1>0]
 m6 <- glm(y~as.matrix(Z)+log(y1p)+0,family=Gamma(link=power(lambda=1/2)))
-valsb <- confint(m6,level=0.999)
+valsb <- confint.default(m6,level=0.999)
 
 
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)

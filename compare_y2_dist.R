@@ -113,13 +113,16 @@ m4=glm(y~age+gender+bmi+smoke+education+black+hispanic+log(y1p),data=Z,family=Ga
 
 m6 <- glm(y~as.matrix(Z)+log(y1p)+0,family=Gamma(link=power(lambda=1/2)))
 
+Z1 <- rbind(data$Za,data$Za)
+y1a <- c(y1)
+m7 <- glm(y1a ~ as.matrix(Z1)+0,family=poisson)
 
 
 model <- "model{
 for(i in 1:n){
-  mu[i] <- (inprod(Z[i,],beta[]))^2
+  mu[i] <- exp(inprod(Z[i,],beta[]))
   #y[i] ~ dgamma(delta,delta/mu[i])
-  y[i] ~ dweibull(delta,mu[i])
+  y[i] ~ dweibull(delta,1/mu[i])
 }
 for(i in 1:k){
   beta[i] ~ dnorm(0.01,1/100)
@@ -127,6 +130,27 @@ for(i in 1:k){
 delta ~ dgamma(1,1)
 }
 "
+
 dattp <- list(y=y,n=length(y),Z=cbind(as.matrix(Z),log(y1p)),k=ncol(Z)+1)
-mtp = jags.model(textConnection(model), dattp,n.adapt=1000,n.chains=3)
-rtp = coda.samples(mtp, c("delta","beta"), n.iter=1000)
+mtp = jags.model(textConnection(model), dattp,n.adapt=500,n.chains=3)
+rtp = coda.samples(mtp, c("delta","beta"), n.iter=500)
+
+
+model <- "model{
+for(i in 1:n){
+  for(j in 1:2){
+    y[i,j] ~ dpois(lam[i])
+  }
+  mu[i] <- exp(inprod(Z[i,],beta[]))
+  lam[i] ~ dnorm(mu[i],taub)
+}
+for(i in 1:k){
+  beta[i] ~ dnorm(0.01,1/100)
+}
+taub ~ dgamma(1,1)
+}
+"
+
+dattp <- list(y=y1,n=nrow(y1),Z=(as.matrix(Z)),k=ncol(Z))
+mtp = jags.model(textConnection(model), dattp,n.adapt=500,n.chains=3)
+rtp = coda.samples(mtp, c("taub","beta"), n.iter=500)

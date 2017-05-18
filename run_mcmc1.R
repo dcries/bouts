@@ -241,7 +241,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln7$out
+assess=assessln$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))
@@ -274,4 +274,4 @@ names(mcomply)[1] <- "Weight"
 ci <- quantile(comply$No,probs=c(0.025,0.975))
 wci <- quantile(comply$Yes,probs=c(0.025,0.975))
 qplot(data=mcomply,x=value,fill=Weight,geom="density",alpha=I(0.5)) + geom_vline(xintercept=ci,linetype=2,colour="red") + 
-  geom_vline(xintercept=wci, linetype=2, colour="blue") + theme_bw()
+  geom_vline(xintercept=wci, linetype=2, colour="blue") + ggtitle("Distribution of Compliance Rates to PAG for Entire Population") + theme_bw()

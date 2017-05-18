@@ -50,14 +50,14 @@ valsb <- confint.default(m6,level=0.999)
 #c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
 
-init = list(currentbetay=coef(m6),
-            currentgamma=coef(m7),currentsigma2y=0.95,currentsigma2x=6.73,
+init = list(currentbetay=valsb[,2],
+            currentgamma=valsg[,2],currentsigma2y=0.95,currentsigma2x=6.73,
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             gammatune=rep(0.00000001,ncol(Za)),propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
             x1propa=x1propa,x1propb=x1propb,betaxtune=c(.1,rep(0.01,ncol(Za)-1)), 
-            propax2=1,propbx2=0.5,currentlambda=.5,propl1=1,propl2=1,
+            propax2=1,propbx2=0.5,currentlambda=.2,propl1=1,propl2=1,
             propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.0001,0.0001),
-            currentSigmab=diag(2)*1, currentsigma2b=1,currentphi=.89)
+            currentSigmab=diag(2)*5, currentsigma2b=5,currentphi=1.89)
 
 prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
              mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)),V0x1=100*diag(ncol(Za)),
@@ -70,5 +70,5 @@ prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Z
 mcmc = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=300000,burn=50000,thin=10)
 assessln <- pp_assess(mcmc,data$Zb,1000,"7c",y1,y2,weights,burn=0)
 
-save(mcmc,file="boutsmcmc_b.RData")
-save(assessln,file="assessmcmc_b.RData")
+save(mcmc,file="boutsmcmc_b3.RData")
+save(assessln,file="assessmcmc_b3.RData")

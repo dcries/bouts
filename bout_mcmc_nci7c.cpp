@@ -1161,8 +1161,8 @@ List mcmc_2part_nci7c(List data,
     if(i < burn){
       betayburn.row(i) = currentbetay.t();
       gammaburn.row(i) = currentgamma.t();    
-      b1burn.row(ind) = currentb.col(0).t();
-      b2burn.row(ind) = currentb.col(1).t();
+      b1burn.row(i) = currentb.col(0).t();
+      b2burn.row(i) = currentb.col(1).t();
     }
     if((i >= burn) && (i%thin==0) ){
       betay.row(ind) = currentbetay.t();
