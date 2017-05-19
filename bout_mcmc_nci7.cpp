@@ -1087,7 +1087,7 @@ List mcmc_2part_nci7(List data,
     currentphi = sample_phi(a0delta,b0delta,currentphi,y2,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),propd1,propd2);
     
     //std::cout << "5\n";
-    
+    //std::cout << betay_var << "\n";
     currentbetay = sample_betay(mu0y2,V0y2,currentphi,arma::join_rows(pow(currentlmuy,2.0),pow(currentlmuy2,2.0)),
                                 y2,x1x2y1,x1x2y2,currentbetay,betay_var,currentb.col(1),10.0);
     //std::cout << "5b\n";
@@ -1166,7 +1166,7 @@ List mcmc_2part_nci7(List data,
         //b = arma::join_rows(b1.col(j),b2.col(j));
         b_var(j,0) = var(b1burn.col(j).rows(0,i-1));
         b_var(j,1) = var(b2burn.col(j).rows(0,i-1));
-        
+        //std::cout << "j=" << j << " b_var=" << b_var.row(j) << "\n";
               // if((b_var(0,0,j)==0) | (b_var(1,1,j)==0)){
               //  bvar0count += 1;
               // }
@@ -1187,8 +1187,8 @@ List mcmc_2part_nci7(List data,
     if(i < burn){
       betayburn.row(i) = currentbetay.t();
       gammaburn.row(i) = currentgamma.t();    
-      b1burn.row(ind) = currentb.col(0).t();
-      b2burn.row(ind) = currentb.col(1).t();
+      b1burn.row(i) = currentb.col(0).t();
+      b2burn.row(i) = currentb.col(1).t();
     }
     if((i >= burn) && (i%thin==0) ){
       betay.row(ind) = currentbetay.t();
