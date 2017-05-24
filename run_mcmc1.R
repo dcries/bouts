@@ -90,7 +90,7 @@ mcmc6 = mcmc_2part_nci6(data=data,init=init,priors=prior,nrep=6000,burn=2000)
 
 mcmc7 = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=100000,burn=20000)
 mcmc7b = mcmc_2part_nci7b(data=data,init=init,priors=prior,nrep=20000,burn=10000)
-mcmc7c = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=20000,burn=10000)
+mcmc7c = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=10000,burn=5000)
 
 mcmc8 = mcmc_2part_nci8(data=data,init=init,priors=prior,nrep=100000,burn=50000)
 mcmc8b = mcmc_2part_nci8b(data=data,init=init,priors=prior,nrep=100000,burn=50000)
@@ -146,8 +146,11 @@ plot(mcmc$corrb[,3],type="l")
 
 plot(mcmc$sigma2y,type="l")
 
+#---------------------------
 
 
+#---------------
+#covariance structure
 postcov <- do.call(cbind,mcmc)
 postcov <- cor(with(mcmc,cbind(betay,gamma,phi,lambda,sigma2b)))
 postcov[lower.tri(postcov)] <- 0
@@ -161,6 +164,8 @@ ggplot(data=df,aes(x=as.factor(x),y=as.factor(y))) + geom_tile(aes(fill=covar)) 
 
 nm <- data.frame(x=1:ncol(postcov),y=c(paste0("betay",1:ncol(mcmc$betay)),paste0("gamma",1:ncol(mcmc$gamma)),"phi","lambda",paste0("sigma2b",1:ncol(mcmc$sigma2b))))
 
+#-----------------------
+#plot of posteriors
 coeffs <- cbind(mcmc$betay,mcmc$gamma)
 cisb <- data.frame(t(apply(mcmc$betay[,1:8],2,quantile,probs=c(0.025,0.5,0.975))))
 cisg <- data.frame(t(apply(mcmc$gamma,2,quantile,probs=c(0.025,0.5,0.975))))
@@ -174,13 +179,18 @@ cis$Significant[cis$q025 > 0 | cis$q975 < 0] <- "Yes"
 ggplot(subset(cis,q50<4), aes(x=name,y=q50, ymin=q025, ymax=q975,colour=Significant)) + facet_grid(~model)+ geom_pointrange(fatten=5) + 
   geom_hline(yintercept=0) + coord_flip() + labs( y = 'Slopes') + theme_bw()
 
-# mby <- melt(mcmc$betay[20000:100000,])
-# mby$X2 <- factor(mby$X2,labels=c("Intercept","Age","Male","BMI","Smoke","Education","Black","Hispanic","log(Y1)"))
-# ggplot(data=mby,aes(x=value))+geom_histogram() + facet_wrap(~X2,scales="free") + xlab(expression(beta)) + theme_bw()
-# 
-# may <- melt(mcmc$gamma[20000:100000,])
-# may$X2 <- factor(may$X2,labels=c("Intercept","Age","Male","BMI","Smoke","Education","Black","Hispanic"))
-# ggplot(data=may,aes(x=value))+geom_histogram() + facet_wrap(~X2,scales="free") + xlab(expression(gamma))+theme_bw()
+
+#plot of posterior for all parameters
+allcoefs <- data.frame(with(mcmc,cbind(gamma,betay,lambda,phi,sigma2b,corrb)))
+names(allcoefs) <- c("int_gamma","age_gamma","gender_gamma","bmi_gamma","smoke_gamma","education_Gamma","black_gamma","hispanic_gamma",
+                     "int_beta","age_beta","gender_beta","bmi_beta","smoke_beta","education_beta","black_beta","hispanic_beta",
+                     "lambda","phi",paste0("sigma2b",1:ncol(mcmc$sigma2b)),"corrb")
+mallcoefs <- melt(allcoefs)
+ggplot(data=mallcoefs) + geom_histogram(aes(x=value)) + facet_wrap(~variable,scales="free") + theme_bw()
+
+
+ests <- mallcoefs %>% group_by(variable) %>% summarise(est=mean(value),
+                                               stderr = sd(value))
 #-------------------------------------------------------------
 
 assessln <- pp_assess(mcmc1,data$Zb,1000,1,burn=10000)
@@ -199,7 +209,7 @@ assessln5b <- pp_assess(mcmc5b,data$Zb,400,"5b",y1,y2,burn=10000)
 
 assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=10000)
 
-assessln7 <- pp_assess(mcmc7,data$Zb,1000,"7",y1,y2,weights,burn=20000)
+assessln7 <- pp_assess(mcmc7,data$Zb,300,"7",y1,y2,weights,burn=0)
 assessln7b <- pp_assess(mcmc7b,data$Zb,400,"7b",y1,y2,weights,burn=10000)
 assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
 assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
@@ -275,3 +285,17 @@ ci <- quantile(comply$No,probs=c(0.025,0.975))
 wci <- quantile(comply$Yes,probs=c(0.025,0.975))
 qplot(data=mcomply,x=value,fill=Weight,geom="density",alpha=I(0.5)) + geom_vline(xintercept=ci,linetype=2,colour="red") + 
   geom_vline(xintercept=wci, linetype=2, colour="blue") + ggtitle("Distribution of Compliance Rates to PAG for Entire Population") + theme_bw()
+
+#-------------------
+#distribution of usual ee with pointwise confidence bands
+
+pwci <- data.frame(t(apply(assessln$disttable,2,quantile,probs=c(0.025,0.5,0.975))))
+names(pwci) <- c("LB","Median","UB")
+pwci$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
+ggplot(data=pwci) + geom_line(aes(x=Quantile,y=Median)) + geom_line(aes(x=Quantile,y=LB),colour="blue",linetype=2)+ 
+  geom_line(aes(x=Quantile,y=UB),colour="blue",linetype=2) + geom_hline(yintercept=450/7,colour="red",linetype=3)+theme_bw()
+
+
+#------------------
+#distribution table for different subpopulations
+
