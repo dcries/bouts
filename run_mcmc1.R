@@ -152,7 +152,7 @@ plot(mcmc$sigma2y,type="l")
 #---------------
 #covariance structure
 postcov <- do.call(cbind,mcmc)
-postcov <- cor(with(mcmc,cbind(betay,gamma,phi,lambda,sigma2b)))
+postcov <- cor(with(mcmc,cbind(betay,gamma,phi,lambda,sigma2b,corrb)))
 postcov[lower.tri(postcov)] <- 0
 diag(postcov) <- 0
 df <- expand.grid(x=1:ncol(postcov),y=1:ncol(postcov))
@@ -278,6 +278,8 @@ q13 <- qplot(x=assess$y2var) + geom_vline(xintercept=y2var,colour="red") + theme
 
 grid.arrange(q1,q2,q2b,q2c,q3,q4,q6,q7b,q8,q9a,q9b,q9c,q10,q11,q12,q13)
 
+#--------------------
+#distribution of those in compliance
 comply <- data.frame(No=assess$pcomply,Yes=assess$pcomply2)
 mcomply <- melt(comply)
 names(mcomply)[1] <- "Weight"

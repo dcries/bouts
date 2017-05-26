@@ -1,6 +1,6 @@
 
 
-usual_ee <- function(mcmcout,Zorig,nsim){
+usual_ee <- function(mcmcout,Zorig,nsim,burn=1){
   ind <- sample(burn:nrow(mcmcout$gamma),nsim)
   
   gamma <- mcmcout$gamma[ind,]
@@ -13,6 +13,7 @@ usual_ee <- function(mcmcout,Zorig,nsim){
   
   pcomply <- matrix(0,ncol=18,nrow=nsim) #18 different groups
   disttable <- array(0,c(nsim,39,18))
+  p <- rep(0,n)
   
   for(i in 1:nsim){
     #simulate covariate matricies for different groups
@@ -25,7 +26,7 @@ usual_ee <- function(mcmcout,Zorig,nsim){
     Z60 <- Zorig; Z60[,2] <- sample(60:70,n,replace=TRUE)
     Zbmi25 <- Zorig; Zbmi25[,4] <- sample(Zorig[Zorig[,4]<25,4],n,replace=TRUE)
     Zbmi30 <- Zorig; Zbmi30[,4] <- sample(Zorig[(Zorig[,4]>25) && (Zorig[Zorig[,4]<30]),4],n,replace=TRUE)
-    Zbmi35 <- Zorig; Zbmi35[,4] <- sample(Zorig[Zorig[,4]>30 && Zorig[Zorig[,4]<30],4],n,replace=TRUE)
+    Zbmi35 <- Zorig; Zbmi35[,4] <- runif(n,30,35)#sample(Zorig[(Zorig[,4]>30) && (Zorig[Zorig[,4]<35]),4],n,replace=TRUE)
     Zbmi35p <- Zorig; Zbmi35p[,4] <- sample(Zorig[Zorig[,4]>35,4],n,replace=TRUE)
     Zwhite <- Zorig; Zwhite[,7:8] <- 0
     Zblack <- Zorig; Zblack[,7] <- 1; Zblack[,8] <- 0
@@ -46,11 +47,11 @@ usual_ee <- function(mcmcout,Zorig,nsim){
     for(j in 1:m){
       x1 <- exp(as.numeric((Z[[j]]%*%gamma[i,]+b[,1])))
       #print(summary(x1))
-      muy <- Z[[j]]%*%(betay[i,1:ncol(Zb)]) + b[,2]
+      muy <- Z[[j]]%*%(betay[i,]) + b[,2]
       x2 <- ((muy)^(2))*gamma(1+1/phi[i])
       
       for(k in 1:n){
-        p[k] <- 1-dgenpois(0,x1[k],lambda[k],FALSE)
+        p[k] <- 1-dgenpois(0,x1[k],lambda[i],FALSE)
       }
       
       x3 <- 30*x1 + p*x2

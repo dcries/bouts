@@ -5,7 +5,7 @@ library(gridExtra)
 library(MASS)
 library(scales)
 
-Rcpp::sourceCpp('C:/Users/dcries/github/bouts/bout_mcmc.cpp')
+Rcpp::sourceCpp('C:/Users/dcries/github/bouts/mcmc_2part_nci7.cpp')
 source('C:/Users/dcries/github/bouts/rgenpois.R')
 source('C:/Users/dcries/github/bouts/pp_assess.R')
 source('~/Documents/github/bouts/rgenpois.R')
@@ -44,36 +44,42 @@ x1propa <- y1rowmean^2/y1rowvar
 #mom estimator for et, alpha=407, beta=329
 # muy 4.01,.06,.002
 #currentalpha=c(-.32,0.47,.001)
-ncomp=3
+Z1 <- rbind(data$Za,data$Za)
+y1a <- c(y1)
+m7 <- glm(y1a ~ as.matrix(Z1)+0,family=poisson)
+valsg <- confint.default(m7,level=0.999)
+#c(1,0,0,0,0,0,0,0)
+Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
+names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
+y = y2[y2>0]
+m6 <- glm(y~as.matrix(Z)+0,family=Gamma(link=power(lambda=1/2)))
+valsb <- confint.default(m6,level=0.999)
+#c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
-init = list(currentbetay=c(1,0,0,0,0,0,0,0,0),currentbetax=c(6.4,-.006,0.57,-.04,-.19,0,0,0,0.48),currentalpha=rep(0,ncol(data$Zb)),
-            currentgamma=c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0),currentsigma2y=0.95,currentsigma2x=6.73,
-            currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
-            currentu=rep(0,nrow(data$y1)),gammatune=rep(0.001,ncol(Za)),
-            propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
-            x1propa=x1propa,x1propb=x1propb,
-            currenttheta=rep(1,1),betaxtune=c(1,rep(0.01,ncol(Za)-1),1), 
-            propax2=1,propbx2=0.5,
-            currentlambda=0.5,propl1=5,propl2=23,
-            currentdelta=1,propd1=6.6,propd2=3.6,alphatune=rep(0.0000001,ncol(data$Zb)),
-            currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.001,0.001),
-            currentSigmab=diag(2)*0.00000001,currentzeta=sample(1:ncomp,nrow(data$y1),TRUE),
-            currentpi=rep(1/ncomp,ncomp),currentm=apply(y1,1,max)+2,
-            currentsigma2b=0.01,currentb2=matrix(0,nrow=nrow(data$y1),ncol=3),
-            btune2=rep(0.001,3),currentSigmab2=diag(3)*0.01,currentb3=rep(0,nrow(data$y1)),
-            currentphi=.89)
 
-prior = list(mu0y2=rep(0,ncol(data$Za)+1),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
-             mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)+1),V0x1=100*diag(ncol(Za)),
+init = list(currentbetay=coef(m6),
+            currentgamma=coef(m7),currentsigma2y=0.95,currentsigma2x=6.73,
+            currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
+            gammatune=rep(0.00000001,ncol(Za)),propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
+            x1propa=x1propa,x1propb=x1propb,betaxtune=c(.1,rep(0.01,ncol(Za)-1)), 
+            propax2=1,propbx2=0.5,currentlambda=.5,propl1=1,propl2=1,
+            propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.0001,0.0001),
+            currentSigmab=diag(2)*1, currentsigma2b=1,currentphi=.89)
+
+prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Za)+1),
+             mu0a=rep(0,ncol(data$Zb)),V0y2=100*diag(ncol(data$Za)),V0x1=100*diag(ncol(Za)),
              V0x2=100*diag(ncol(Za)+1),V0a=100*diag(ncol(data$Zb)),a0eta=1,b0eta=1,
              a0x=1,b0x=1,a0y=1,b0y=1,
              a0theta=1,b0theta=1,
              a0l=1,b0l=1,
-             a0delta=1,b0delta=1, d0=4, D0=diag(2),adirich=rep(1,ncomp),
-             D02=diag(3))
+             a0delta=1,b0delta=1, d0=4, D0=diag(2))
+
+mcmc = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=10000,burn=5000,thin=1)
+
+assessln <- pp_assess(mcmc,data$Zb,200,"7c",y1,y2,weights,burn=5000)
 
 
-mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=10000,burn=5000)
+mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=10000,burn=5000,thin=1)
 mcmc = mcmc_2part_nci5(data=data,init=init,priors=prior,nrep=10000,burn=5000)
 mcmc = mcmc_2part_nci5b(data=data,init=init,priors=prior,nrep=10000,burn=5000)
 
