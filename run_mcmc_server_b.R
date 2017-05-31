@@ -40,12 +40,12 @@ x1propa <- y1rowmean^2/y1rowvar
 # muy 4.01,.06,.002
 #currentalpha=c(-.32,0.47,.001)
 
-Z1 <- rbind(data$Za,data$Za)
+Z1 <- rbind(Za,Za)
 y1a <- c(y1)
 m7 <- glm(y1a ~ as.matrix(Z1)+0,family=poisson)
 valsg <- confint.default(m7,level=0.9999)
 #c(1,0,0,0,0,0,0,0)
-Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
+Z = data.frame(rbind(Za[y2[,1]>0,],Za[y2[,2]>0,]))
 names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic","oajob")
 y = y2[y2>0]
 m6 <- glm(y~as.matrix(Z)+0,family=gaussian(link=log))
