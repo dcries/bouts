@@ -4,7 +4,9 @@ library(MASS)
 #library(ggplot2)
 #library(gridExtra)
 
-Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci7c.cpp')
+#Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci7c.cpp')
+Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci9.cpp')
+
 source('/home/dcries/bouts/pp_assess.R')
 source('/home/dcries/bouts/rgenpois.R')
 
@@ -13,18 +15,19 @@ bouts <- read.csv("/home/dcries/bouts/data/finalbouts2rep.csv")
 
 weights <- bouts %>% group_by(id) %>% filter(rep==1)
 weights <- unlist(weights[,"B1BaseWeight"])
-Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% dplyr::select(age,gender,bmi,smoke,education,black,hispanic)
+Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% dplyr::select(age,gender,bmi,smoke,education,black,hispanic,oajob)
 Za$education[Za$education <=3 ] <- 0
 Za$education[Za$education >3 ] <- 1
 Za$hispanic <- abs(Za$hispanic-2)
 
-Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic),data=Za)
+Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic)+oajob,data=Za)
 
 
-new <- bouts[,c("id","rep","nbouts","totalexcess")]
-newm <- melt(new,id.vars=c("id","rep"))
-newc <- cast(newm,id~rep+variable)
-y1=as.matrix(newc[,c(2,4)]);y2=as.matrix(newc[,c(3,5)])
+bouts2 <- bouts[!is.na(bouts$oajob),]
+new2 <- bouts2[,c("id","rep","nbouts","totalexcess")]
+newm2 <- melt(new2,id.vars=c("id","rep"))
+newc2 <- cast(newm2,id~rep+variable)
+y1=as.matrix(newc2[,c(2,4)]);y2=as.matrix(newc2[,c(3,5)])
 #x1tune=rowMeans(y1)
 #x1tune[x1tune==0] <- 1
 y1rowmean=rowMeans(y1)
@@ -40,15 +43,18 @@ x1propa <- y1rowmean^2/y1rowvar
 Z1 <- rbind(data$Za,data$Za)
 y1a <- c(y1)
 m7 <- glm(y1a ~ as.matrix(Z1)+0,family=poisson)
-valsg <- confint.default(m7,level=0.999)
+valsg <- confint.default(m7,level=0.9999)
 #c(1,0,0,0,0,0,0,0)
 Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
-names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
+names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic","oajob")
 y = y2[y2>0]
-m6 <- glm(y~as.matrix(Z)+0,family=Gamma(link=power(lambda=1/2)))
-valsb <- confint.default(m6,level=0.999)
+m6 <- glm(y~as.matrix(Z)+0,family=gaussian(link=log))
+valsb <- confint.default(m6,level=0.9999)
 #c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
+
+data$y2[data$y2[,1]>0,1] <- data$y2[data$y2[,1]>0,1]/data$y1[data$y2[,1]>0,1]
+data$y2[data$y2[,2]>0,2] <- data$y2[data$y2[,2]>0,2]/data$y1[data$y2[,2]>0,2]
 
 init = list(currentbetay=coef(m6),
             currentgamma=coef(m7),currentsigma2y=0.95,currentsigma2x=6.73,
@@ -67,8 +73,8 @@ prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Z
              a0l=1,b0l=1,
              a0delta=1,b0delta=1, d0=4, D0=diag(2))
 
-mcmc = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=300000,burn=50000,thin=10)
-assessln <- pp_assess(mcmc,data$Zb,1000,"7c",y1,y2,weights,burn=0)
+mcmc = mcmc_2part_nci9(data=data,init=init,priors=prior,nrep=300000,burn=50000,thin=10)
+assessln <- pp_assess(mcmc,data$Zb,1000,"7c",y1,y2,rep(0,nrow(y1)),burn=0)
 
 save(mcmc,file="boutsmcmc_b.RData")
 save(assessln,file="assessmcmc_b.RData")
