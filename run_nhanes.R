@@ -5,7 +5,7 @@ library(gridExtra)
 library(MASS)
 library(scales)
 
-Rcpp::sourceCpp('C:/Users/dcries/github/bouts/mcmc_2part_nci7.cpp')
+Rcpp::sourceCpp('C:/Users/dcries/github/bouts/mcmc_2part_nci9.cpp')
 source('C:/Users/dcries/github/bouts/rgenpois.R')
 source('C:/Users/dcries/github/bouts/pp_assess.R')
 source('~/Documents/github/bouts/rgenpois.R')
@@ -52,10 +52,13 @@ valsg <- confint.default(m7,level=0.999)
 Z = data.frame(rbind(data$Za[y2[,1]>0,],data$Za[y2[,2]>0,]))
 names(Z) <- c("int","age","gender","bmi","smoke","education","black","hispanic")
 y = y2[y2>0]
-m6 <- glm(y~as.matrix(Z)+0,family=Gamma(link=power(lambda=1/2)))
+m6 <- glm(y~as.matrix(Z)+0,family=gaussian(link=log))
 valsb <- confint.default(m6,level=0.999)
 #c(2.01,-0.012,0.578,-0.018,-0.011,0,0,0)
 data = list(Za=Za,Zb=Za,y1=y1,y2=y2)
+
+data$y2[data$y2[,1]>0,1] <- data$y2[data$y2[,1]>0,1]/data$y1[data$y2[,1]>0,1]
+data$y2[data$y2[,2]>0,2] <- data$y2[data$y2[,2]>0,2]/data$y1[data$y2[,2]>0,2]
 
 init = list(currentbetay=coef(m6),
             currentgamma=coef(m7),currentsigma2y=0.95,currentsigma2x=6.73,
@@ -74,9 +77,9 @@ prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Z
              a0l=1,b0l=1,
              a0delta=1,b0delta=1, d0=4, D0=diag(2))
 
-mcmc = mcmc_2part_nci7c(data=data,init=init,priors=prior,nrep=10000,burn=5000,thin=1)
+mcmc = mcmc_2part_nci9(data=data,init=init,priors=prior,nrep=10000,burn=5000,thin=1)
 
-assessln <- pp_assess(mcmc,data$Zb,200,"7c",y1,y2,weights,burn=5000)
+assessln <- pp_assess(mcmc,data$Zb,400,"9",data$y1,data$y2,weights,burn=5000)
 
 
 mcmc = mcmc_2part_nci7(data=data,init=init,priors=prior,nrep=10000,burn=5000,thin=1)
@@ -215,7 +218,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln5$out
+assess=assessln$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))

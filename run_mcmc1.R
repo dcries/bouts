@@ -156,7 +156,7 @@ plot(mcmc$sigma2y,type="l")
 #---------------
 #covariance structure
 postcov <- do.call(cbind,mcmc)
-postcov <- cor(with(mcmc,cbind(betay,gamma,phi,lambda,sigma2b,corrb)))
+postcov <- cor(with(mcmc,cbind(betay,gamma,sigma2y,lambda,sigma2b,corrb)))
 postcov[lower.tri(postcov)] <- 0
 diag(postcov) <- 0
 df <- expand.grid(x=1:ncol(postcov),y=1:ncol(postcov))
@@ -171,24 +171,26 @@ nm <- data.frame(x=1:ncol(postcov),y=c(paste0("betay",1:ncol(mcmc$betay)),paste0
 #-----------------------
 #plot of posteriors
 coeffs <- cbind(mcmc$betay,mcmc$gamma)
-cisb <- data.frame(t(apply(mcmc$betay[,1:8],2,quantile,probs=c(0.025,0.5,0.975))))
+cisb <- data.frame(t(apply(mcmc$betay,2,quantile,probs=c(0.025,0.5,0.975))))
 cisg <- data.frame(t(apply(mcmc$gamma,2,quantile,probs=c(0.025,0.5,0.975))))
 cis <- rbind(cisb,cisg)
 names(cis) <- c("q025","q50","q975")
-cis$model <- c(rep("Weibull",nrow(cisb)),rep("GenPoisson",nrow(cisg)))
-cis$name <- rep(c("Intercept","Age","Male","BMI","Smoke","Education","Black","Hispanic"),2)
+cis$model <- c(rep("LogNormal",nrow(cisb)),rep("GenPoisson",nrow(cisg)))
+cis$name <- rep(c("Intercept","Age","Male","BMI","Smoke","Education","Black","Hispanic","PhysJob"),2)
 cis$Significant <- "No"
 cis$Significant[cis$q025 > 0 | cis$q975 < 0] <- "Yes"
+cis$name <- factor(cis$name, levels = unique(sort(cis$name)))
+cis2 <- cis[cis$name != "Intercept",]
 
-ggplot(subset(cis,q50<4), aes(x=name,y=q50, ymin=q025, ymax=q975,colour=Significant)) + facet_grid(~model)+ geom_pointrange(fatten=5) + 
-  geom_hline(yintercept=0) + coord_flip() + labs( y = 'Slopes') + theme_bw()
+ggplot(cis2, aes(x=(name),y=q50, ymin=q025, ymax=q975,colour=Significant)) + facet_grid(~model,scales="free")+ geom_pointrange(fatten=5) + 
+  geom_hline(yintercept=0) + coord_flip() + labs( y = 'Slopes',x='') + theme_bw()
 
 
 #plot of posterior for all parameters
-allcoefs <- data.frame(with(mcmc,cbind(gamma,betay,lambda,phi,sigma2b,corrb)))
+allcoefs <- data.frame(with(mcmc,cbind(gamma,betay,lambda,sigma2y,sigma2b,corrb)))
 names(allcoefs) <- c("int_gamma","age_gamma","gender_gamma","bmi_gamma","smoke_gamma","education_Gamma","black_gamma","hispanic_gamma","physjob_gamma",
                      "int_beta","age_beta","gender_beta","bmi_beta","smoke_beta","education_beta","black_beta","hispanic_beta","physjob_beta",
-                     "lambda","phi",paste0("sigma2b",1:ncol(mcmc$sigma2b)),"corrb")
+                     "lambda","sigma2y",paste0("sigma2b",1:ncol(mcmc$sigma2b)),"corrb")
 mallcoefs <- melt(allcoefs)
 ggplot(data=mallcoefs) + geom_histogram(aes(x=value)) + facet_wrap(~variable,scales="free") + theme_bw()
 
@@ -347,14 +349,13 @@ sigma2y <- mcmc$sigma2y[samp]
 sigma2b <- mcmc$sigma2b[samp,]
 corrb <- mcmc$corrb[samp]
 
-
 disttable <- matrix(0,nrow=1000,ncol=39)
 for(i in 1:1000){
     bcovmat <- matrix(c(sigma2b[i,1],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sigma2b[i,2]),
                       nrow=2,byrow=T)
   b <- mvrnorm(popsize,c(0,0),bcovmat)
   
-  x1_1 <- exp(gamma%*%t(iowa)+b[,1])
+  x1_1 <- exp(iowa%*%gamma[i,]+b[,1])
 
   
   p <- rep(0,popsize)
@@ -362,7 +363,7 @@ for(i in 1:1000){
     p[j] <- 1-dgenpois(0,x1_1[j],lambda[i],FALSE)
   }
   
-  x3 <- 30*x1_1 + exp(beta%*%t(iowa)+b[,2]+sigma2y[i]/2)*x1_1*p
+  x3 <- 30*x1_1 + exp((iowa)%*%beta[i,]+b[,2]+sigma2y[i]/2)*x1_1*p
 
   disttable[i,] <- quantile(x3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
 }
