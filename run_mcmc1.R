@@ -4,6 +4,7 @@ library(ggplot2)
 library(gridExtra)
 library(MASS)
 library(scales)
+library(mcmcse)
 
 Rcpp::sourceCpp('C:/Users/dcries/github/bouts/bout_mcmc.cpp')
 source('C:/Users/dcries/github/bouts/rgenpois.R')
@@ -15,11 +16,14 @@ setwd("~/Documents/github/bouts/data/")
 bouts <- read.csv("finalbouts2rep.csv")
 pams <- read.csv("FinalPAMSDataSetNew.csv")
 
+bouts$oajob <- 0
+bouts$oajob[bouts$occupation %in% c(33,35,37,45,47,49,51,53,55)] <- 1
+bouts$oajob[is.na(bouts$occupation)] <- NA
 #Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% select(age,gender,bmi,smoke,education,black,hispanic)
 weights <- bouts %>% group_by(id) %>% filter(rep==1)
 weights <- unlist(weights[,"B1BaseWeight"])
 Za <- bouts %>% group_by(id) %>% filter(rep==1)
-Za <- Za[,c("age","gender","bmi","smoke","education","black","hispanic")]
+Za <- Za[,c("age","gender","bmi","smoke","education","black","hispanic","oajob")]
 Za$education[Za$education <=3 ] <- 0
 Za$education[Za$education >3 ] <- 1
 Za$hispanic <- abs(Za$hispanic-2)
@@ -182,8 +186,8 @@ ggplot(subset(cis,q50<4), aes(x=name,y=q50, ymin=q025, ymax=q975,colour=Signific
 
 #plot of posterior for all parameters
 allcoefs <- data.frame(with(mcmc,cbind(gamma,betay,lambda,phi,sigma2b,corrb)))
-names(allcoefs) <- c("int_gamma","age_gamma","gender_gamma","bmi_gamma","smoke_gamma","education_Gamma","black_gamma","hispanic_gamma",
-                     "int_beta","age_beta","gender_beta","bmi_beta","smoke_beta","education_beta","black_beta","hispanic_beta",
+names(allcoefs) <- c("int_gamma","age_gamma","gender_gamma","bmi_gamma","smoke_gamma","education_Gamma","black_gamma","hispanic_gamma","physjob_gamma",
+                     "int_beta","age_beta","gender_beta","bmi_beta","smoke_beta","education_beta","black_beta","hispanic_beta","physjob_beta",
                      "lambda","phi",paste0("sigma2b",1:ncol(mcmc$sigma2b)),"corrb")
 mallcoefs <- melt(allcoefs)
 ggplot(data=mallcoefs) + geom_histogram(aes(x=value)) + facet_wrap(~variable,scales="free") + theme_bw()
@@ -191,6 +195,10 @@ ggplot(data=mallcoefs) + geom_histogram(aes(x=value)) + facet_wrap(~variable,sca
 
 ests <- mallcoefs %>% group_by(variable) %>% summarise(est=mean(value),
                                                stderr = sd(value))
+mcse <- c(sqrt(diag(mcse.multi(mcmc$gamma)$cov)/length(mcmc$gamma)),sqrt(diag(mcse.multi(mcmc$betay)$cov)/length(mcmc$lambda)),
+          mcse(mcmc$lambda)$se,mcse(mcmc$phi)$se,sqrt(diag(mcse.multi(mcmc$sigma2b)$cov)/length(mcmc$sigma2b)),mcse(mcmc$corrb)$se)
+ests$mcse <- mcse
+ests$mcse_post_ratio <- ests$mcse/ests$stderr
 #-------------------------------------------------------------
 
 assessln <- pp_assess(mcmc1,data$Zb,1000,1,burn=10000)
@@ -210,9 +218,11 @@ assessln5b <- pp_assess(mcmc5b,data$Zb,400,"5b",y1,y2,burn=10000)
 assessln6 <- pp_assess(mcmc6,data$Zb,400,"6",y1,y2,burn=10000)
 
 assessln7 <- pp_assess(mcmc7,data$Zb,300,"7",y1,y2,weights,burn=0)
-assessln7b <- pp_assess(mcmc7b,data$Zb,400,"7b",y1,y2,weights,burn=10000)
+assessln7c <- pp_assess(mcmc7c,data$Zb,400,"7c",y1,y2,weights,burn=5000)
 assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
 assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
+
+assessln9 <- pp_assess(mcmc9,data$Zb,1000,"9",y1,y2,weights,burn=0)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -251,7 +261,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln$out
+assess=assessln9$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))
@@ -294,10 +304,112 @@ qplot(data=mcomply,x=value,fill=Weight,geom="density",alpha=I(0.5)) + geom_vline
 pwci <- data.frame(t(apply(assessln$disttable,2,quantile,probs=c(0.025,0.5,0.975))))
 names(pwci) <- c("LB","Median","UB")
 pwci$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
-ggplot(data=pwci) + geom_line(aes(x=Quantile,y=Median)) + geom_line(aes(x=Quantile,y=LB),colour="blue",linetype=2)+ 
-  geom_line(aes(x=Quantile,y=UB),colour="blue",linetype=2) + geom_hline(yintercept=450/7,colour="red",linetype=3)+theme_bw()
+q1 <- ggplot(data=pwci) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,y=Quantile),colour="blue",linetype=2)+ 
+  geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+
+  xlim(c(0,3000))
 
 
 #------------------
-#distribution table for different subpopulations
+#distribution for state of iowa
+library(gtools)
 
+age <- c(.07,.065,.061,.058,.062,.071,.073,.067,.055,.041)/sum(c(.07,.065,.061,.058,.062,.071,.073,.067,.055,.041))
+gender <- 0.505
+black <- 0.029
+hispanic <- 0.05
+educ <- 0.267
+smoke <- .188
+physjob <- .189
+bmi <- c(0.017,.293,.339,.351)
+popsize <- 5000
+
+nages <- round(age*popsize)
+nages[1] <- nages[1]-1
+ages <- c(runif(nages[1],20,25),runif(nages[2],25,30),runif(nages[3],30,35),runif(nages[4],35,40),runif(nages[5],40,45),
+          runif(nages[6],45,50),runif(nages[7],50,55),runif(nages[8],55,60),runif(nages[9],60,65),runif(nages[10],65,70))
+nbmis <- round(bmi*popsize)
+bmis <- c(runif(nbmis[1],13,18),runif(nbmis[2],18,25),runif(nbmis[3],25,30),runif(nbmis[4],30,45))
+bmis <- sample(bmis,replace=F)
+smokes <- sample(0:1,prob=c(1-.188,.188),replace=TRUE)
+educs <- sample(0:1,prob=c(1-educ,educ),replace=TRUE)
+blacks <- sample(0:1,prob=c(1-black,black),replace=TRUE)
+hispanics <- sample(0:1,prob=c(1-hispanic,hispanic),replace=TRUE)
+physjobs <- sample(0:1,prob=c(1-physjob,physjob),replace=TRUE)
+genders <- sample(0:1,prob=c(1-gender,gender),replace=TRUE)
+
+iowa <- cbind(rep(1,popsize),ages,genders,bmis,smokes,educs,blacks,hispanics,physjobs)
+
+samp <- sample(1:nrow(mcmc$betay),1000)
+gamma <- mcmc$gamma[samp,]
+beta <- mcmc$betay[samp,]
+lambda <- mcmc$lambda[samp]
+sigma2y <- mcmc$sigma2y[samp]
+sigma2b <- mcmc$sigma2b[samp,]
+corrb <- mcmc$corrb[samp]
+
+
+disttable <- matrix(0,nrow=1000,ncol=39)
+for(i in 1:1000){
+    bcovmat <- matrix(c(sigma2b[i,1],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sigma2b[i,2]),
+                      nrow=2,byrow=T)
+  b <- mvrnorm(popsize,c(0,0),bcovmat)
+  
+  x1_1 <- exp(gamma%*%t(iowa)+b[,1])
+
+  
+  p <- rep(0,popsize)
+  for(j in 1:popsize){
+    p[j] <- 1-dgenpois(0,x1_1[j],lambda[i],FALSE)
+  }
+  
+  x3 <- 30*x1_1 + exp(beta%*%t(iowa)+b[,2]+sigma2y[i]/2)*x1_1*p
+
+  disttable[i,] <- quantile(x3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
+}
+
+pwci <- data.frame(t(apply(disttable,2,quantile,probs=c(0.025,0.5,0.975))))
+names(pwci) <- c("LB","Median","UB")
+pwci$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
+q2=ggplot(data=pwci) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,y=Quantile),colour="blue",linetype=2)+ 
+  geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+
+  xlim(c(0,3000))
+
+#-----------------
+#dist of indiviuals
+ind1 <- c(1,30,0,22,0,1,0,0,0)
+ind2 <- c(1,65,1,28,0,1,1,0,0)
+ind3 <- c(1,40,1,35,1,0,0,0,1)
+samp <- sample(1:nrow(mcmc$betay),5000)
+
+gamma <- mcmc$gamma[samp,]
+beta <- mcmc$betay[samp,]
+lambda <- mcmc$lambda[samp]
+sigma2y <- mcmc$sigma2y[samp]
+sigma2b <- mcmc$sigma2b[samp,]
+corrb <- mcmc$corrb[samp]
+
+b <- matrix(0,ncol=2,nrow=5000)
+for(i in 1:5000){
+  bcovmat <- matrix(c(sigma2b[i,1],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sigma2b[i,2]),
+                    nrow=2,byrow=T)
+  b[i,] <- mvrnorm(1,c(0,0),bcovmat)
+}
+x1_1 <- exp(gamma%*%ind1+b[,1])
+x1_2 <- exp(gamma%*%ind2+b[,1])
+x1_3 <- exp(gamma%*%ind3+b[,1])
+
+p <- matrix(0,ncol=3,nrow=5000)
+for(j in 1:5000){
+  p[j,1] <- 1-dgenpois(0,x1_1[j],lambda[i],FALSE)
+  p[j,2] <- 1-dgenpois(0,x1_2[j],lambda[j],FALSE)
+  p[j,3] <- 1-dgenpois(0,x1_3[j],lambda[j],FALSE)
+}
+
+t3_1 <- 30*x1_1 + exp(beta%*%ind1+b[,2]+sigma2y/2)*x1_1*p[,1]
+t3_2 <- 30*x1_2 + exp(beta%*%ind2+b[,2]+sigma2y/2)*x1_2*p[,2]
+t3_3 <- 30*x1_3 + exp(beta%*%ind3+b[,2]+sigma2y/2)*x1_3*p[,3]
+
+p1 <- qplot(t3_1)+theme_bw() + xlim(c(0,5000))
+p2 <- qplot(t3_2)+theme_bw()+ xlim(c(0,5000))
+p3 <- qplot(t3_3)+theme_bw()+ xlim(c(0,5000))
+grid.arrange(p1,p2,p3)
