@@ -88,5 +88,5 @@ prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Z
 mcmc = mcmc_2part_nci9(data=data,init=init,priors=prior,nrep=300000,burn=50000,thin=10)
 assessln <- pp_assess(mcmc,data$Zb,1000,"9",data$y1,data$y2,rep(0,nrow(y1)),burn=0)
 
-save(mcmc,file="boutsmcmc3.RData")
-save(assessln,file="assessmcmc3.RData")
+save(mcmc,file="boutsmcmc2.RData")
+save(assessln,file="assessmcmc2.RData")
