@@ -120,7 +120,7 @@ qplot(x=permutei) + geom_vline(xintercept=obs,col="red")
 #check exchangeability for y2 (and weekend effect) using waynes idea
 #
 
-a <- melt(bouts[,c("id","rep","nbouts","totalexcess","Weekend")],id.vars=c("id","rep"))
+a <- melt(bouts[,c("id","rep","nbouts","avgtotalexcess","Weekend")],id.vars=c("id","rep"))
 boutscast <- cast(data=a,id~rep+variable,value.var="value")
 
 names(boutscast)[2:7] <- c("nbouts1","totalexcess1","weekend1","nbouts2","totalexcess2","weekend2")

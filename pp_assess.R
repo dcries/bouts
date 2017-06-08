@@ -51,6 +51,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,weights,burn=1){
   p <- rep(0,n)
   
   disttable <- matrix(0,nrow=nsim,ncol=39)
+  disttablew <- matrix(0,nrow=nsim,ncol=39)
   
 
   if(ymodel==1){
@@ -1666,10 +1667,11 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,weights,burn=1){
       
       x3 <- 30*x1 + p*x2*x1
       pcomply[i] <- sum(x3>450/7)/n
-      pcomply2[i] <- sum(x3>450/5)/n
+      pcomply2[i] <- sum((x3>450/7)*weights)/(sum(weights))
       
       kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
       disttable[i,] <- quantile(x3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
+      disttablew[i,] <- wtd.quantile(x3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99),weights=weights)
       
     }
   }
@@ -1677,7 +1679,7 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,weights,burn=1){
               y2zeroboth,y2zeroeither,y2greaterthan,y1y2regcoef,y1y2cor,y2median,
               y2q15,y2q25,y2q35,y2q90,y2q95,y2q30,pcomply,pcomply2,y110,y101,y100,
               y102,y120,y112,y121,y122,y111,y2mean,y2var))
-  return(list(out=out,y1=y1,y2=y2,x2=x2,x3=x3,p=p,x1=x1,kspval=kspval,disttable=disttable))
+  return(list(out=out,y1=y1,y2=y2,x2=x2,x3=x3,p=p,x1=x1,kspval=kspval,disttable=disttable,disttablew=disttablew))
   #return(out)
   
 }

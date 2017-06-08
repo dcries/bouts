@@ -5,6 +5,7 @@ library(gridExtra)
 library(MASS)
 library(scales)
 library(mcmcse)
+library(Hmisc)
 
 Rcpp::sourceCpp('C:/Users/dcries/github/bouts/bout_mcmc.cpp')
 source('C:/Users/dcries/github/bouts/rgenpois.R')
@@ -19,16 +20,18 @@ pams <- read.csv("FinalPAMSDataSetNew.csv")
 bouts$oajob <- 0
 bouts$oajob[bouts$occupation %in% c(33,35,37,45,47,49,51,53,55)] <- 1
 bouts$oajob[is.na(bouts$occupation)] <- NA
+bouts$education[bouts$education <=3 ] <- 0
+bouts$education[bouts$education >3 ] <- 1
 #Za <- bouts %>% group_by(id) %>% filter(rep==1) %>% select(age,gender,bmi,smoke,education,black,hispanic)
-weights <- bouts %>% group_by(id) %>% filter(rep==1)
-weights <- unlist(weights[,"B1BaseWeight"])
+weights <- (bouts %>% group_by(id) %>% filter(rep==1))$rakedweights
+#weights <- unlist(weights[,"B1BaseWeight"])
 Za <- bouts %>% group_by(id) %>% filter(rep==1)
 Za <- Za[,c("age","gender","bmi","smoke","education","black","hispanic","oajob")]
 Za$education[Za$education <=3 ] <- 0
 Za$education[Za$education >3 ] <- 1
 Za$hispanic <- abs(Za$hispanic-2)
 
-Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic),data=Za)
+Za <- model.matrix(~age+as.factor(gender)+bmi+as.factor(smoke)+(education)+(black)+as.factor(hispanic)+oajob,data=Za)
 #Za[,2] <- scale(Za[,2])
 #Za[,4] <- scale(Za[,4])
 
@@ -182,7 +185,7 @@ cis$Significant[cis$q025 > 0 | cis$q975 < 0] <- "Yes"
 cis$name <- factor(cis$name, levels = unique(sort(cis$name)))
 cis2 <- cis[cis$name != "Intercept",]
 
-ggplot(cis2, aes(x=(name),y=q50, ymin=q025, ymax=q975,colour=Significant)) + facet_grid(~model,scales="free")+ geom_pointrange(fatten=5) + 
+ggplot(cis2, aes(x=(name),y=q50, ymin=q025, ymax=q975,colour=Significant,shape=Significant)) + facet_grid(~model,scales="free")+ geom_pointrange(fatten=5) + 
   geom_hline(yintercept=0) + coord_flip() + labs( y = 'Slopes',x='') + theme_bw()
 
 
@@ -201,6 +204,16 @@ mcse <- c(sqrt(diag(mcse.multi(mcmc$gamma)$cov)/length(mcmc$gamma)),sqrt(diag(mc
           mcse(mcmc$lambda)$se,mcse(mcmc$phi)$se,sqrt(diag(mcse.multi(mcmc$sigma2b)$cov)/length(mcmc$sigma2b)),mcse(mcmc$corrb)$se)
 ests$mcse <- mcse
 ests$mcse_post_ratio <- ests$mcse/ests$stderr
+
+#table
+othercoefs <- data.frame(with(mcmc,cbind(lambda,sigma2y,sigma2b,corrb)))
+names(othercoefs) <- c("$\\lambda$","$\\sigma^2_y$","$\\sigma^2_{b_1}$","$\\sigma^2_{b_2}$","$\\rho_b$")
+m <- round(colMeans(othercoefs),3)
+ci <- round(t(apply(othercoefs,2,quantile,probs=c(0.025,0.975))),3)
+tab <- data.frame(cbind(m,ci))
+rownames(tab) <- names(othercoefs)
+names(tab) <- c("Mean", "Lower 95\\%", "Upper 95\\%")
+print(xtable(tab,label="estimates",caption="Posterior mean and 95\\% credible intervals for parameters",digits=3), sanitize.text.function = function(x){x})
 #-------------------------------------------------------------
 
 assessln <- pp_assess(mcmc1,data$Zb,1000,1,burn=10000)
@@ -224,7 +237,7 @@ assessln7c <- pp_assess(mcmc7c,data$Zb,400,"7c",y1,y2,weights,burn=5000)
 assessln8 <- pp_assess(mcmc8,data$Zb,2000,"8",y1,y2,burn=50000)
 assessln8b <- pp_assess(mcmc8b,data$Zb,2000,"8b",y1,y2,burn=50000)
 
-assessln9 <- pp_assess(mcmc9,data$Zb,1000,"9",y1,y2,weights,burn=0)
+assessln9 <- pp_assess(mcmc,data$Zb,1000,"9",y1,y2,weights,burn=0)
 
 y1zeroboth <- sum(rowSums(y1)==0)
 y1zeroeither <- sum(apply(y1,1,function(x){return(!0%in%x)}))
@@ -263,7 +276,7 @@ probs <- c(y100,y110,y120,y101,y102,y111,y112,y121,y122)/sum(c(y100,y110,y120,y1
 
 y2daydiff <- mean(y2[,1]-y2[,2])
 
-assess=assessln9$out
+assess=assessln$out
 obs <- c(median(assess$y100),median(assess$y110),median(assess$y120),median(assess$y101),
          median(assess$y102),median(assess$y111),median(assess$y112),median(assess$y121),
          median(assess$y122))
@@ -290,6 +303,17 @@ q13 <- qplot(x=assess$y2var) + geom_vline(xintercept=y2var,colour="red") + theme
 
 grid.arrange(q1,q2,q2b,q2c,q3,q4,q6,q7b,q8,q9a,q9b,q9c,q10,q11,q12,q13)
 
+
+
+
+chisqp <- rep(0,length(assess$y100))
+for(i in 1:length(assess$y100)){
+  obs <- c((assess$y100[i]),(assess$y110[i]),(assess$y120[i]),(assess$y101[i]),
+           (assess$y102[i]),(assess$y111[i]),(assess$y112[i]),(assess$y121[i]),
+           (assess$y122[i]))
+  chisqp[i] <- chisq.test(obs,p=probs)$p.value
+}
+
 #--------------------
 #distribution of those in compliance
 comply <- data.frame(No=assess$pcomply,Yes=assess$pcomply2)
@@ -310,21 +334,56 @@ q1 <- ggplot(data=pwci) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=
   geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+
   xlim(c(0,3000))
 
+#for iowa population using raked weights
+pwci2 <- data.frame(t(apply(assessln$disttablew,2,quantile,probs=c(0.025,0.5,0.975))))
+names(pwci2) <- c("LB","Median","UB")
+pwci2$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
+q2 <- ggplot(data=pwci2) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,y=Quantile),colour="blue",linetype=2)+ 
+  geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+
+  xlim(c(0,3000))
 
 #------------------
 #distribution for state of iowa
 library(gtools)
 
 age <- c(.07,.065,.061,.058,.062,.071,.073,.067,.055,.041)/sum(c(.07,.065,.061,.058,.062,.071,.073,.067,.055,.041))
-gender <- 0.505
-black <- 0.029
-hispanic <- 0.05
-educ <- 0.267
-smoke <- .188
-physjob <- .189
+gender <- c(0.505)
+black <- c(0.029)
+hispanic <- c(0.05)
+educ <- c(0.267)
+smoke <- c(.188)
+physjob <- c(.189)
 bmi <- c(0.017,.293,.339,.351)
-popsize <- 5000
 
+bouts1 <- bouts %>% filter(rep==1)
+bouts1$agecat <- 10
+bouts1$agecat[bouts1$age < 65] <- 9
+bouts1$agecat[bouts1$age < 60] <- 8
+bouts1$agecat[bouts1$age < 55] <- 7
+bouts1$agecat[bouts1$age < 50] <- 6
+bouts1$agecat[bouts1$age < 45] <- 5
+bouts1$agecat[bouts1$age < 40] <- 4
+bouts1$agecat[bouts1$age < 35] <- 3
+bouts1$agecat[bouts1$age < 30] <- 2
+bouts1$agecat[bouts1$age < 25] <- 1
+
+bouts1$bmicat <- 4
+bouts1$bmicat[bouts1$bmi < 30] <- 3
+bouts1$bmicat[bouts1$bmi < 25] <- 2
+bouts1$bmicat[bouts1$bmi < 18] <- 1
+bouts1$caseid <- 1:nrow(bouts1)
+#--------
+library(weights)
+library(anesrake)
+
+targets <- list(agecat=age,gender=gender,black=black,hispanic=hispanic,education=educ,smoke=smoke)
+#targets <- list(gender=gender,bmicat=bmi)
+anesrakefinder(targets, bouts1[,c("agecat","gender","black","hispanic","education","smoke")], choosemethod = "total")
+outsave <- anesrake(targets, bouts1[,c("agecat","gender","black","hispanic","education","smoke")], caseid = bouts1$caseid,
+                    verbose= FALSE, cap = 5, choosemethod = "total",
+                    type = "pctlim", pctlim = .05 , nlim = 7,
+                    iterate = TRUE , force1 = TRUE)
+popsize <- 5000
 nages <- round(age*popsize)
 nages[1] <- nages[1]-1
 ages <- c(runif(nages[1],20,25),runif(nages[2],25,30),runif(nages[3],30,35),runif(nages[4],35,40),runif(nages[5],40,45),
@@ -380,7 +439,7 @@ q2=ggplot(data=pwci) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,
 ind1 <- c(1,30,0,22,0,1,0,0,0)
 ind2 <- c(1,65,1,28,0,1,1,0,0)
 ind3 <- c(1,40,1,35,1,0,0,0,1)
-samp <- sample(1:nrow(mcmc$betay),5000)
+samp <- sample(1:nrow(mcmc$betay),1000)
 
 gamma <- mcmc$gamma[samp,]
 beta <- mcmc$betay[samp,]
@@ -389,28 +448,67 @@ sigma2y <- mcmc$sigma2y[samp]
 sigma2b <- mcmc$sigma2b[samp,]
 corrb <- mcmc$corrb[samp]
 
-b <- matrix(0,ncol=2,nrow=5000)
-for(i in 1:5000){
+b <- matrix(0,ncol=2,nrow=1000)
+for(i in 1:1000){
   bcovmat <- matrix(c(sigma2b[i,1],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sqrt(sigma2b[i,1]*sigma2b[i,2])*corrb[i],sigma2b[i,2]),
                     nrow=2,byrow=T)
   b[i,] <- mvrnorm(1,c(0,0),bcovmat)
 }
-x1_1 <- exp(gamma%*%ind1+b[,1])
-x1_2 <- exp(gamma%*%ind2+b[,1])
-x1_3 <- exp(gamma%*%ind3+b[,1])
 
-p <- matrix(0,ncol=3,nrow=5000)
-for(j in 1:5000){
-  p[j,1] <- 1-dgenpois(0,x1_1[j],lambda[i],FALSE)
-  p[j,2] <- 1-dgenpois(0,x1_2[j],lambda[j],FALSE)
-  p[j,3] <- 1-dgenpois(0,x1_3[j],lambda[j],FALSE)
+disttable1 <- matrix(0,nrow=1000,ncol=39)
+disttable2 <- matrix(0,nrow=1000,ncol=39)
+disttable3 <- matrix(0,nrow=1000,ncol=39)
+pcomply1 <- rep(0,1000);pcomply3 <- rep(0,1000);pcomply2 <- rep(0,1000)
+
+for(i in 1:1000){
+  x1_1 <- exp(ind1%*%(gamma[i,])+b[,1])
+  x1_2 <- exp(ind2%*%(gamma[i,])+b[,1])
+  x1_3 <- exp(ind3%*%gamma[i,]+b[,1])
+  
+  p <- matrix(0,ncol=3,nrow=1000)
+  for(j in 1:1000){
+    p[j,1] <- 1-dgenpois(0,x1_1[j],lambda[i],FALSE)
+    p[j,2] <- 1-dgenpois(0,x1_2[j],lambda[i],FALSE)
+    p[j,3] <- 1-dgenpois(0,x1_3[j],lambda[i],FALSE)
+  }
+  
+  t3_1 <- 30*x1_1 + exp(ind1%*%beta[i,]+b[,2]+sigma2y[i]/2)*x1_1*p[,1]
+  t3_2 <- 30*x1_2 + exp(ind2%*%beta[i,]+b[,2]+sigma2y[i]/2)*x1_2*p[,2]
+  t3_3 <- 30*x1_3 + exp(ind3%*%beta[i,]+b[,2]+sigma2y[i]/2)*x1_3*p[,3]
+  
+  disttable1[i,] <- quantile(t3_1,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
+  disttable2[i,] <- quantile(t3_2,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
+  disttable3[i,] <- quantile(t3_3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
+  pcomply1[i] <- sum(t3_1>450/7)/length(t3_1)
+  pcomply2[i] <- sum(t3_2>450/7)/length(t3_1)
+  pcomply3[i] <- sum(t3_3>450/7)/length(t3_1)
+  
 }
 
-t3_1 <- 30*x1_1 + exp(beta%*%ind1+b[,2]+sigma2y/2)*x1_1*p[,1]
-t3_2 <- 30*x1_2 + exp(beta%*%ind2+b[,2]+sigma2y/2)*x1_2*p[,2]
-t3_3 <- 30*x1_3 + exp(beta%*%ind3+b[,2]+sigma2y/2)*x1_3*p[,3]
+pwci1 <- data.frame(t(apply(disttable1,2,quantile,probs=c(0.025,0.5,0.975))))
+names(pwci1) <- c("LB","Median","UB")
+pwci1$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
+
+pwci2 <- data.frame(t(apply(disttable2,2,quantile,probs=c(0.025,0.5,0.975))))
+names(pwci2) <- c("LB","Median","UB")
+pwci2$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
+
+pwci3 <- data.frame(t(apply(disttable3,2,quantile,probs=c(0.025,0.5,0.975))))
+names(pwci3) <- c("LB","Median","UB")
+pwci3$Quantile <- c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99)
+
+#pwci1 <- 3000
+
+p1=ggplot(data=pwci1) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,y=Quantile),colour="blue",linetype=2)+ 
+  geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+ggtitle("Individual 1")#+ xlim(c(0,4000))
+p2=ggplot(data=pwci2) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,y=Quantile),colour="blue",linetype=2)+ 
+  geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+ggtitle("Individual 2")#+ xlim(c(0,4000))
+p3=ggplot(data=pwci3) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,y=Quantile),colour="blue",linetype=2)+ 
+  geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+ggtitle("Individual 3")#+ xlim(c(0,4000))
 
 p1 <- qplot(t3_1)+theme_bw() + xlim(c(0,5000))
 p2 <- qplot(t3_2)+theme_bw()+ xlim(c(0,5000))
 p3 <- qplot(t3_3)+theme_bw()+ xlim(c(0,5000))
 grid.arrange(p1,p2,p3)
+
+pwci1$se <- apply(disttable1,2,sd)
