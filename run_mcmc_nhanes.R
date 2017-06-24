@@ -6,7 +6,7 @@ library(Hmisc)
 #library(gridExtra)
 
 #Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci7c.cpp')
-Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci9.cpp')
+Rcpp::sourceCpp('/home/dcries/bouts/bout_mcmc_nci9b.cpp')
 
 source('/home/dcries/bouts/pp_assess.R')
 source('/home/dcries/bouts/rgenpois.R')
@@ -85,7 +85,7 @@ prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Z
              a0l=1,b0l=1,
              a0delta=1,b0delta=1, d0=4, D0=diag(2))
 
-mcmc = mcmc_2part_nci9(data=data,init=init,priors=prior,nrep=500000,burn=50000,thin=15)
+mcmc = mcmc_2part_nci9b(data=data,init=init,priors=prior,nrep=500000,burn=50000,thin=15)
 #assessln <- pp_assess(mcmc,data$Zb,1000,"9",data$y1,data$y2,weights,burn=0)
 
 save(mcmc,file="boutsmcmc_nhanes.RData")
