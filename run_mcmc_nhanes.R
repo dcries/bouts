@@ -86,7 +86,7 @@ prior = list(mu0y2=rep(0,ncol(data$Za)),mu0x1=rep(0,ncol(Za)),mu0x2=rep(0,ncol(Z
              a0delta=1,b0delta=1, d0=4, D0=diag(2))
 
 mcmc = mcmc_2part_nci9b(data=data,init=init,priors=prior,nrep=500000,burn=50000,thin=15)
-#assessln <- pp_assess(mcmc,data$Zb,1000,"9",data$y1,data$y2,weights,burn=0)
+assessln <- pp_assess(mcmc,data$Zb,1000,"9",data$y1,data$y2,weights,burn=0)
 
 save(mcmc,file="boutsmcmc_nhanes.RData")
-#save(assessln,file="assessmcmc.RData")
+save(assessln,file="assessmcmc_nhanes.RData")
