@@ -12,7 +12,7 @@ source('/home/dcries/bouts/pp_assess.R')
 source('/home/dcries/bouts/rgenpois.R')
 
 #setwd("C:\\Users\\dcries\\github\\bouts\\data")
-nhanes <- read.csv("NHANES_use.csv")
+nhanes <- read.csv("/home/dcries/bouts/data/NHANES_use.csv")
 weights <- (nhanes %>% group_by(id) %>% filter(rep==1))$smplwt
 
 # bouts1 <- bouts %>% group_by(id) %>% filter(rep==1)
