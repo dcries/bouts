@@ -1076,8 +1076,8 @@ List mcmc_2part_nci9b(List data,
     
     currentlmux1 = calc_lmu(Za,currentgamma,currentb.col(0));
     
-    currentlambda = sample_lambda(y1,y2,exp(currentlmux1),arma::join_rows(currentlmuy,currentlmuy2),
-                                  currentp,currentsigma2y,currentlambda,a0l,b0l,propl1,propl2);
+    // currentlambda = sample_lambda(y1,y2,exp(currentlmux1),arma::join_rows(currentlmuy,currentlmuy2),
+    //                               currentp,currentsigma2y,currentlambda,a0l,b0l,propl1,propl2);
     currentp = calc_p(exp(currentlmux1),currentlambda);
     //std::cout << "6d\n";
     

@@ -1668,7 +1668,6 @@ pp_assess <- function(mcmcout,Zb,nsim, ymodel,y1real,y2real,weights,burn=1){
       x3 <- 30*x1 + p*x2*x1
       pcomply[i] <- sum(x3>450/7)/n
       pcomply2[i] <- sum((x3>450/7)*weights)/(sum(weights))
-      
       kspval[i] <- ks.test(y2real[y2real>0],y2[y2>0])$p.value
       disttable[i,] <- quantile(x3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99))
       disttablew[i,] <- wtd.quantile(x3,probs=c(0.01,seq(from=0.05,to=0.95,by=0.025),0.99),weights=weights)

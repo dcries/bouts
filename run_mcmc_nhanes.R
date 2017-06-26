@@ -13,7 +13,7 @@ source('/home/dcries/bouts/rgenpois.R')
 
 #setwd("C:\\Users\\dcries\\github\\bouts\\data")
 nhanes <- read.csv("/home/dcries/bouts/data/NHANES_use.csv")
-weights <- (nhanes %>% group_by(id) %>% filter(rep==1))$smplwt
+weights <- (nhanes %>% group_by(id) %>% summarise(smplwt=smplwt[1]))$smplwt
 
 # bouts1 <- bouts %>% group_by(id) %>% filter(rep==1)
 # #bouts1 <- bouts1[!is.na("oajob"),]
@@ -73,7 +73,7 @@ init = list(currentbetay=coef(m6),
             currenteta=1.23,currentx1=rowMeans(data$y1)+0.1,currentx2=rowMeans(data$y2)+1,
             gammatune=rep(0.00000001,ncol(Za)),propa=1,propb=0.5,propx2=1/0.05,vx2=rep(10,nrow(Za)),
             x1propa=x1propa,x1propb=x1propb,betaxtune=c(.1,rep(0.01,ncol(Za)-1)), 
-            propax2=1,propbx2=0.5,currentlambda=.5,propl1=1,propl2=1,
+            propax2=1,propbx2=0.5,currentlambda=0,propl1=1,propl2=1,
             propd1=1,propd2=1,currentb=matrix(0,nrow=nrow(data$y1),ncol=2),btune=c(0.0001,0.0001),
             currentSigmab=diag(2)*1, currentsigma2b=1,currentphi=.89)
 
