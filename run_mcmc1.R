@@ -6,6 +6,7 @@ library(MASS)
 library(scales)
 library(mcmcse)
 library(Hmisc)
+library(xtable)
 
 Rcpp::sourceCpp('C:/Users/dcries/github/bouts/bout_mcmc.cpp')
 source('C:/Users/dcries/github/bouts/rgenpois.R')
@@ -342,6 +343,8 @@ q2 <- ggplot(data=pwci2) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x
   geom_line(aes(x=UB,y=Quantile),colour="blue",linetype=2) + geom_vline(xintercept=450/7,colour="red",linetype=3)+theme_bw()+
   xlim(c(0,3000))
 
+grid.arrange(q1,q2,nrow=2)
+
 #------------------
 #distribution for state of iowa
 library(gtools)
@@ -435,10 +438,14 @@ q2=ggplot(data=pwci) + geom_line(aes(x=Median,y=Quantile)) + geom_line(aes(x=LB,
   xlim(c(0,3000))
 
 #-----------------
-#dist of indiviuals
-ind1 <- c(1,30,0,22,0,1,0,0,0)
-ind2 <- c(1,65,1,28,0,1,1,0,0)
-ind3 <- c(1,40,1,35,1,0,0,0,1)
+#dist of indiviuals for PAMS
+ind1 <- c(1,30,0,0,1,0,0,0)
+ind2 <- c(1,65,1,0,1,1,0,0)
+ind3 <- c(1,40,1,1,0,0,0,1)
+#dist of indiviuals for NHANES, no occupation
+ind1 <- c(1,30,0,0,1,0,0)
+ind2 <- c(1,65,1,0,1,1,0)
+ind3 <- c(1,40,1,1,0,0,0)
 samp <- sample(1:nrow(mcmc$betay),1000)
 
 gamma <- mcmc$gamma[samp,]
@@ -512,3 +519,27 @@ p3 <- qplot(t3_3)+theme_bw()+ xlim(c(0,5000))
 grid.arrange(p1,p2,p3)
 
 pwci1$se <- apply(disttable1,2,sd)
+
+#----------------------------------
+#table instead of plot
+dist <- assessln$disttable[,c(2,4,10,20,30,36,38)]
+distw <- assessln$disttablew[,c(2,4,10,20,30,36,38)]
+se <- apply(dist,2,sd)
+sew <- apply(distw,2,sd)
+m <- colMeans(dist)
+mw <- colMeans(distw)
+
+dist1 <- disttable1[,c(2,4,10,20,30,36,38)]
+dist2 <- disttable2[,c(2,4,10,20,30,36,38)]
+dist3 <- disttable3[,c(2,4,10,20,30,36,38)]
+m1 <- colMeans(dist1)
+m2 <- colMeans(dist2)
+m3 <- colMeans(dist3)
+se1 <- apply(dist1,2,sd)
+se2 <- apply(dist2,2,sd)
+se3 <- apply(dist3,2,sd)
+
+tab <- data.frame(t(cbind(m,se,mw,sew,m1,se1,m2,se2,m3,se3)))
+names(tab) <- c("5th","10th","25th","50th","75th","90th","95th")
+rownames(tab) <- c("NHANES Sample", "", "US Population", " ","Individual 1","  ","Individual 2","   ","Individual 3","    ")
+print(xtable(tab,digits=2))
